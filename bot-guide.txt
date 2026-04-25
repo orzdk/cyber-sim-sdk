@@ -1,0 +1,209 @@
+================================================================================
+  CYBERPUNK TCG — BOT DEVELOPER GUIDE
+================================================================================
+
+You only need to edit one file: server-ai-mybot.js
+The base class (server-ai.js) handles all networking for you.
+
+Quick start:
+  node server-ai-mybot.js                       ← creates a room, waits for opponent
+  node server-ai-mybot.js --join ROOM_ID        ← joins an existing room
+  node server-ai-mybot.js --human               ← 500ms delay between actions
+  node server-ai-mybot.js --deck AlphaStarterArasaka
+
+Connecting to a remote server (e.g. Fly deployment):
+  SERVER_URL=https://cyber-sim.fly.dev node server-ai-mybot.js
+  -- or --
+  node server-ai-mybot.js --server https://cyber-sim.fly.dev
+
+
+────────────────────────────────────────────────────────────────────────────────
+  THE THREE METHODS YOU CAN OVERRIDE
+────────────────────────────────────────────────────────────────────────────────
+
+chooseDeck()
+  Return a deck key from the decks/ folder, e.g.
+    'AlphaStarterMerc' | 'AlphaStarterArasaka' | 'Iron_Rain' | ...
+  Called once at startup.
+
+decideMulligan(board)
+  Return true to keep your opening hand, false to redraw once.
+
+selectAction(wf, board)
+  Called whenever it is your turn to act. Return an action object (see below).
+  wf    = the waitingFor object — tells you what kind of decision is needed.
+          wf.step  identifies the decision type (e.g. 'play_phase').
+          wf.owner identifies whose turn it is.
+  board = the full board state.
+  Return null to let the engine fallback fire (usually end_phase / end_attacks).
+
+
+────────────────────────────────────────────────────────────────────────────────
+  HELPERS AVAILABLE IN selectAction
+────────────────────────────────────────────────────────────────────────────────
+
+  this.myState()                   full PlayerState for your side
+  this.opponentState()             full PlayerState for the opponent
+  this.opponentPid()               'p1' or 'p2'
+
+  this.card(cardId)                card definition object from /api/cards
+  this.cardName(cardId)            display name string
+  this.hasKeyword(cardIdOrRef, kw) true/false  (e.g. 'BLOCKER', 'GO_SOLO')
+
+  this.availableEddies()           count of ready, un-tapped eddies + legends
+  this.tappedCount()               how many resources are pre-committed
+  this.readyUnitsOnField()         your ready UnitRefs
+  this.spentUnitsOnField()         your spent UnitRefs
+  this.unitPower(unitRef)          power value including attached gear
+  this.readyResource()             first untapped eddie/legend you can tap
+
+All helpers accept an optional playerState argument, defaulting to your own.
+
+
+────────────────────────────────────────────────────────────────────────────────
+  ACTION REFERENCE  (what selectAction should return)
+────────────────────────────────────────────────────────────────────────────────
+
+When wf.step is...   Return this object
+─────────────────    ─────────────────────────────────────────────────────────
+
+choose_gig_die       { step: 'choose_gig_die', sides: <int> }
+                     sides must be one of wf.available (never d20 unless last).
+
+─────────────────    ─────────────────────────────────────────────────────────
+                     During the PLAY PHASE you send one action per call.
+                     Send multiple in sequence — the loop calls you again.
+
+play_phase           { step: 'sell_card',    iid: '<hand card iid>' }
+                       Once per turn. Card must have card.eddie === true.
+                       Moves card to eddies zone as 1 ready eddie.
+
+                     { step: 'tap_resource', iid: '<eddie or legend iid>' }
+                       Pre-commit a resource toward the next payment.
+                       Both face-up AND face-down legends can be tapped (= 1 eddie each).
+                       Use untap_resource to undo: { step: 'untap_resource', iid }
+
+                     { step: 'call_legend',  iid: '<legend iid>' }
+                       Costs 2 tapped resources. Flips legend face-up.
+                       Once per turn.
+
+                     { step: 'play_card',    iid: '<hand card iid>' }
+                       Costs card.cost in pre-tapped resources.
+                       For Gear add:  equip_to: '<ready unit iid>'
+                       Units cannot attack the turn they are played
+                       (unless they have GO_SOLO or HASTE_VS_SPENT).
+
+                     { step: 'end_phase' }
+                       Advance to the attack phase. Always return this when done.
+
+─────────────────    ─────────────────────────────────────────────────────────
+
+declare_attack       { step: 'declare_attack',
+                         attacker_iid: '<iid from wf.attackable>',
+                         target: { kind: 'player', id: '<opponent pid>' } }
+                       Steal 1 gig (+1 per 10 power above 0).
+
+                     { step: 'declare_attack',
+                         attacker_iid: '<iid>',
+                         target: { kind: 'unit', iid: '<spent opponent unit iid>' } }
+                       Fight: higher power wins; tie = both defeated.
+
+                     { step: 'end_attacks' }
+                       Done attacking; passes turn to opponent.
+
+─────────────────    ─────────────────────────────────────────────────────────
+                     wf.owner is the DEFENDING player during this step.
+                     You are defending when wf.step === 'defensive_step'
+                     AND wf.owner === this.pid.
+
+defensive_step       { step: 'pass_defensive' }
+                       Let the attack resolve as declared.
+
+                     { step: 'blocker', iid: '<iid from wf.blocker_iids>' }
+                       Redirect attack to a friendly BLOCKER unit (turns steal → fight).
+
+                     { step: 'call_legend_defensive', iid: '<face-down legend iid>' }
+                       Flip a legend during defense (costs 2 eddies, once per turn total).
+                       Only available when wf.can_call_legend === true.
+                       You must follow up with pass_defensive or blocker.
+
+─────────────────    ─────────────────────────────────────────────────────────
+
+choose_gig_to_steal  { step: 'choose_gig_to_steal', iids: [<gig iid>, ...] }
+                       Pick wf.count gigs from wf.available_iids.
+
+effect_choice        { step: 'effect_choice_response', response: { ... } }
+                       Format depends on wf.choice_needed.kind:
+                         confirm_optional → { accept: true | false }
+                         choose_amount    → { amount: <int> }
+                         choose_unit/card → { iid: '<from need.available_iids>' }
+
+
+────────────────────────────────────────────────────────────────────────────────
+  STATE QUICK REFERENCE
+────────────────────────────────────────────────────────────────────────────────
+
+this.myState() returns a PlayerState:
+
+  p.zones.hand      [ { iid, card_id } ]
+  p.zones.field     [ { iid, card_id, state, equipped_gear, entered_play_turn } ]
+  p.zones.legends   [ { iid, card_id, state, face, equipped_gear } ]
+  p.zones.eddies    [ { iid, card_id, state } ]
+  p.zones.gigs      [ { iid, sides, value } ]   ← your claimed gig dice
+  p.zones.fixer     [ { iid, sides, value:0 } ] ← dice not yet taken
+  p.zones.deck      [ { iid, card_id } ]
+  p.zones.trash     [ { iid, card_id } ]
+
+  p.tapped          [ iid, ... ]   resources tapped but not yet spent
+  p.sold_card_this_turn            bool
+  p.called_legend_this_turn        bool
+  p.called_legend_defensive_this_turn bool
+
+card definition (from this.card(cardId)):
+
+  .number    card ID (matches card_id in zones)
+  .name      display name
+  .type      'Legend' | 'Unit' | 'Program' | 'Gear'
+  .cost      int or null
+  .power     base combat power
+  .eddie     true if card can be sold
+  .keywords  string of space/comma-separated keywords, or null
+  .rules_text full text
+
+board fields:
+
+  board.turn_number
+  board.active_player   'p1' | 'p2'
+  board.overtime        bool
+  board.winner          null | 'p1' | 'p2'
+
+
+────────────────────────────────────────────────────────────────────────────────
+  WIN CONDITIONS
+────────────────────────────────────────────────────────────────────────────────
+
+  Start your turn with 6+ gig dice → you win.
+  Overtime (neither player took a new gig last full round): first to 7 wins.
+  Opponent's deck empties → you win.
+
+Street Cred = sum of all your gig die values (used by some card effects).
+Gigs stolen when attacking player directly = 1 + floor(attacker power / 10).
+
+
+────────────────────────────────────────────────────────────────────────────────
+  TIPS
+────────────────────────────────────────────────────────────────────────────────
+
+  • Eddies are NOT auto-deducted. You must tap_resource first, then play_card.
+  • tapped[] is cleared at the start of your next turn — unused taps are wasted.
+  • sell_card adds a ready eddie immediately; you can tap it this same turn.
+  • Legends (face-up or face-down) each count as 1 eddie when tapped.
+  • A unit's iid is stable for its whole time on the field — safe to cache.
+  • If the server rejects an action it never changes state — safe to re-evaluate.
+  • If you get stuck in a play_phase loop, return { step: 'end_phase' }.
+  • check board.winner or status === 'finished' to detect game over.
+
+
+================================================================================
+  END OF GUIDE
+================================================================================
