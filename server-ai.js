@@ -48,6 +48,7 @@ class CyberpunkBot extends EventEmitter {
   error(...args) { console.error(`[${this.name} ERROR]`, ...args); }
 
   sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+  _humanTick() { const opts = [400, 500, 600, 700]; return opts[Math.floor(Math.random() * opts.length)]; }
 
   // ─── HTTP ───────────────────────────────────────────────────────────────────
 
@@ -319,7 +320,7 @@ class CyberpunkBot extends EventEmitter {
       // ── Mulligan ──
       if (gd.status === 'mulligan') {
         if (!gd.players[this.pid]?.mulliganed) {
-          if (this.humanDelay) await this.sleep(this.humanDelay);
+          if (this.humanDelay) await this.sleep(this._humanTick());
           const keep = this.decideMulligan ? this.decideMulligan(gd.board) : true;
           const resp = await this._post_mulligan(keep);
           if (resp) this.gameData = resp;
@@ -348,7 +349,7 @@ class CyberpunkBot extends EventEmitter {
         }
         const fb = this._fallbackAction(gd.waitingFor.step);
         this.log(`No action found, fallback: ${fb.step}`);
-        if (this.humanDelay) await this.sleep(this.humanDelay);
+        if (this.humanDelay) await this.sleep(this._humanTick());
         const resp = await this._post_step(fb);
         if (resp) { this.gameData = resp; consecutive_failures = 0; }
         else return;
@@ -356,7 +357,7 @@ class CyberpunkBot extends EventEmitter {
       }
 
       consecutive_failures = 0;
-      if (this.humanDelay) await this.sleep(this.humanDelay);
+      if (this.humanDelay) await this.sleep(this._humanTick());
       const resp = await this._post_step(action);
       if (resp) {
         this.log(`ACK ${action.step}`);
