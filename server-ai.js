@@ -364,8 +364,7 @@ class CyberpunkBot extends EventEmitter {
           if (this.humanDelay) await this.sleep(this._humanTick());
           const choice = this.decideCoinToss ? this.decideCoinToss(gd) : 'first';
           this.log(`Coin toss won — picking: ${choice}`);
-          const resp = await this._post_pick_order(choice);
-          if (resp) this.gameData = resp;
+          await this._post_pick_order(choice);
         } else {
           this.log('Coin toss: waiting for opponent to pick order');
         }
@@ -377,9 +376,7 @@ class CyberpunkBot extends EventEmitter {
         if (!gd.players[this.pid]?.mulliganed) {
           if (this.humanDelay) await this.sleep(this._humanTick());
           const keep = this.decideMulligan ? this.decideMulligan(gd.board) : true;
-          const resp = await this._post_mulligan(keep);
-          if (resp) this.gameData = resp;
-          if (this.gameData.status !== 'mulligan') continue;
+          await this._post_mulligan(keep);
         }
         return;
       }
@@ -405,10 +402,9 @@ class CyberpunkBot extends EventEmitter {
         const fb = this._fallbackAction(gd.waitingFor.step, gd.waitingFor);
         this.log(`No action found, fallback: ${fb.step}`);
         if (this.humanDelay) await this.sleep(this._humanTick());
-        const resp = await this._post_step(fb);
-        if (resp) { this.gameData = resp; consecutive_failures = 0; }
-        else return;
-        continue;
+        await this._post_step(fb);
+        // Always exit; SSE will drive the next processState pass.
+        return;
       }
 
       consecutive_failures = 0;
@@ -416,15 +412,12 @@ class CyberpunkBot extends EventEmitter {
       const resp = await this._post_step(action);
       if (resp) {
         this.log(`ACK ${action.step}`);
-        this.gameData = resp;
-      } else {
-        if (action.step === 'blocker') {
-          this.log('Blocker rejected — falling back to pass_defensive');
-          const fb = await this._post_step({ step: 'pass_defensive' });
-          if (fb) this.gameData = fb;
-        }
-        return;
+      } else if (action.step === 'blocker') {
+        this.log('Blocker rejected — falling back to pass_defensive');
+        await this._post_step({ step: 'pass_defensive' });
       }
+      // Exit after every post; the next state arrives via SSE and re-enters processState.
+      return;
     }
     this.error(`Safety valve: ${MAX_ACTIONS} actions in one turn, breaking`);
   }
