@@ -16,18 +16,28 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 const { CyberpunkBot } = require('./server-ai');
+const config = require('./server-ai-mybot.config.json');
 
 class MyBot extends CyberpunkBot {
 
   constructor(options = {}) {
-    super(options);
-    this.name = options.name || 'MyBot';
+    super({
+      ...options,
+      botInfo: { name: config.botName, owner: config.owner },
+    });
+    this.name = options.name || config.botName;
   }
 
   // ── Which deck to play ────────────────────────────────────────────────────
 
   chooseDeck() {
     return 'AlphaStarterMerc';
+  }
+
+  // ── Coin toss ─────────────────────────────────────────────────────────────
+
+  decideCoinToss(/* gameData */) {
+    return 'first';
   }
 
   // ── Mulligan decision ─────────────────────────────────────────────────────

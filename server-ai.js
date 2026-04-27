@@ -7,9 +7,10 @@
 //  Handles ALL networking, room setup, SSE state stream, action loop,
 //  game-end detection. Subclass it and override:
 //
-//    chooseDeck()             → 'AlphaStarterMerc' | 'AlphaStarterArasaka' | ...
-//    decideMulligan(board)    → true (keep) | false (redraw)
-//    selectAction(wf, board)  → action object | null
+//    chooseDeck()                → 'AlphaStarterMerc' | 'AlphaStarterArasaka' | ...
+//    decideMulligan(board)       → true (keep) | false (redraw)
+//    decideCoinToss(gameData)    → 'first' | 'second'  (called when you win the toss)
+//    selectAction(wf, board)     → action object | null
 //
 //  Run with:  SERVER_URL=https://cyber-sim.fly.dev node my-bot.js
 // ─────────────────────────────────────────────────────────────────────────────
@@ -26,14 +27,15 @@ class CyberpunkBot extends EventEmitter {
     super();
     this.serverUrl = options.serverUrl || DEFAULT_SERVER_URL;
     this.name      = options.name      || 'Bot';
-    this.deck      = options.deck      || null;     // resolved via chooseDeck() if null
+    this.deck      = options.deck      || null;
     this.roomId    = options.roomId    || null;
     this.token     = null;
     this.pid       = null;
     this.isHost    = options.host !== false;
     this.gameData  = null;
-    this.db        = {};                            // card database
+    this.db        = {};
 
+    this.botInfo            = options.botInfo || null;
     this.humanDelay         = options.humanDelay || 0;
     this.isProcessing       = false;
     this.pendingStateChange = false;
@@ -87,6 +89,31 @@ class CyberpunkBot extends EventEmitter {
           if (res.statusCode >= 400) { reject(new Error(`HTTP ${res.statusCode}: ${response}`)); return; }
           try { resolve(response ? JSON.parse(response) : {}); }
           catch (e) { reject(new Error(`Parse error: ${e.message}\nResponse: ${response}`)); }
+        });
+      });
+      req.on('error', reject);
+      req.write(data);
+      req.end();
+    });
+  }
+
+  async httpDelete(path, body) {
+    return new Promise((resolve, reject) => {
+      const url  = new URL(path, this.serverUrl);
+      const data = JSON.stringify(body);
+      const req  = this._client(url).request({
+        protocol: url.protocol,
+        hostname: url.hostname,
+        port:     url.port || (url.protocol === 'https:' ? 443 : 80),
+        path:     url.pathname + url.search,
+        method:   'DELETE',
+        headers:  { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(data) },
+      }, res => {
+        let response = '';
+        res.on('data', c => response += c);
+        res.on('end', () => {
+          try { resolve(response ? JSON.parse(response) : {}); }
+          catch (e) { reject(new Error(`Parse error: ${e.message}`)); }
         });
       });
       req.on('error', reject);
@@ -167,13 +194,21 @@ class CyberpunkBot extends EventEmitter {
     this.deck = deckKey;
 
     if (this.isHost) {
+      // Step 1: create the room (just reserves it, no player in yet)
       this.log('Creating room...');
-      const result = await this.httpPost('/api/rooms', { name: this.name, deckKey });
-      this.roomId = result.roomId;
-      this.token  = result.token;
-      this.pid    = result.pid;
-      this.log(`Created room ${this.roomId} as ${this.pid}`);
+      const created = await this.httpPost('/api/rooms', { name: this.name, deckKey, botInfo: this.botInfo });
+      this.roomId     = created.roomId;
+      this.ownerToken = created.ownerToken;
+      this.log(`Created room ${this.roomId}`);
+
+      // Step 2: enter the room as the owner
+      this.log('Entering room...');
+      const entered = await this.httpPost(`/api/rooms/${this.roomId}/enter`, { token: this.ownerToken });
+      this.token = entered.token;
+      this.pid   = entered.pid;
+      this.log(`Entered as ${this.pid}`);
       this.emit('ready', { roomId: this.roomId, pid: this.pid });
+
     } else {
       this.log(`Joining room ${this.roomId}...`);
       const result = await this.httpPost(`/api/rooms/${this.roomId}/join`, { name: this.name, deckKey });
@@ -227,6 +262,10 @@ class CyberpunkBot extends EventEmitter {
                 }
               } catch (err) {
                 this.error('SSE reconnect failed:', err?.message || err);
+                // Room was evicted — host bots recreate their room automatically
+                if (this.isHost && !this.result && /404/.test(err?.message)) {
+                  this._rewarm();
+                }
               }
             }, 2000);
           });
@@ -266,6 +305,7 @@ class CyberpunkBot extends EventEmitter {
 
         await this.connectSSE();
 
+        // Process immediately if we're past the waiting phase
         if (this.gameData.status !== 'waiting') {
           this.processState();
         } else {
@@ -317,6 +357,21 @@ class CyberpunkBot extends EventEmitter {
         return;
       }
 
+      // ── Coin toss ──
+      if (gd.status === 'coin_toss') {
+        const winner = gd.coinToss?.winner;
+        if (winner === this.pid) {
+          if (this.humanDelay) await this.sleep(this._humanTick());
+          const choice = this.decideCoinToss ? this.decideCoinToss(gd) : 'first';
+          this.log(`Coin toss won — picking: ${choice}`);
+          const resp = await this._post_pick_order(choice);
+          if (resp) this.gameData = resp;
+        } else {
+          this.log('Coin toss: waiting for opponent to pick order');
+        }
+        return;
+      }
+
       // ── Mulligan ──
       if (gd.status === 'mulligan') {
         if (!gd.players[this.pid]?.mulliganed) {
@@ -347,7 +402,7 @@ class CyberpunkBot extends EventEmitter {
           this.error('Too many consecutive failures, breaking');
           return;
         }
-        const fb = this._fallbackAction(gd.waitingFor.step);
+        const fb = this._fallbackAction(gd.waitingFor.step, gd.waitingFor);
         this.log(`No action found, fallback: ${fb.step}`);
         if (this.humanDelay) await this.sleep(this._humanTick());
         const resp = await this._post_step(fb);
@@ -392,11 +447,61 @@ class CyberpunkBot extends EventEmitter {
     this.emit('game_over', payload);
   }
 
-  _fallbackAction(step) {
-    if (step === 'choose_gig_die') return { step: 'choose_gig_die', sides: 4 };
-    if (step === 'play_phase')     return { step: 'end_phase' };
-    if (step === 'declare_attack') return { step: 'end_attacks' };
-    if (step === 'defensive_step') return { step: 'pass_defensive' };
+  async _rewarm(attempt = 1) {
+    const MAX = 5;
+    if (attempt > MAX) {
+      this.error('Re-warm failed after max attempts — giving up');
+      this.emit('fatal', new Error('Re-warm failed'));
+      return;
+    }
+    const delay = Math.min(4000 * attempt, 30000);
+    this.log(`Room evicted — re-warming (attempt ${attempt}/${MAX}) in ${delay / 1000}s...`);
+    await this.sleep(delay);
+    if (this._stopped) return;
+
+    try {
+      // Reset per-room state; keep db and deck loaded
+      this.roomId     = null;
+      this.token      = null;
+      this.pid        = null;
+      this.gameData   = null;
+      this.result     = null;
+      this.ownerToken = null;
+
+      const created = await this.httpPost('/api/rooms', {
+        name:    this.name,
+        deckKey: this.deck,
+        botInfo: this.botInfo,
+      });
+      this.roomId     = created.roomId;
+      this.ownerToken = created.ownerToken;
+
+      const entered = await this.httpPost(`/api/rooms/${this.roomId}/enter`, { token: this.ownerToken });
+      this.token = entered.token;
+      this.pid   = entered.pid;
+
+      const state = await this.httpGet(`/api/rooms/${this.roomId}/state`);
+      this.gameData = state;
+
+      this.emit('ready', { roomId: this.roomId, pid: this.pid });
+      this.log(`Re-warmed into room ${this.roomId}`);
+
+      await this.connectSSE();
+    } catch (e) {
+      this.error(`Re-warm attempt ${attempt} failed: ${e.message}`);
+      this._rewarm(attempt + 1);
+    }
+  }
+
+  _fallbackAction(step, wf) {
+    if (step === 'choose_gig_die')    return { step: 'choose_gig_die', sides: 4 };
+    if (step === 'play_phase')        return { step: 'end_phase' };
+    if (step === 'declare_attack')    return { step: 'end_attacks' };
+    if (step === 'defensive_step')    return { step: 'pass_defensive' };
+    if (step === 'choose_gig_to_steal') {
+      const iid = (wf?.available_iids || [])[0];
+      return iid ? { iids: [iid] } : { step: 'end_attacks' };
+    }
     return { step: 'effect_choice_response', response: { accept: false, iid: null } };
   }
 
@@ -426,10 +531,25 @@ class CyberpunkBot extends EventEmitter {
     }
   }
 
+  async _post_pick_order(choice) {
+    try {
+      const resp = await this.httpPost(`/api/rooms/${this.roomId}/pick_order`, {
+        token: this.token,
+        choice,
+      });
+      this.log(`Pick order: ${choice}`);
+      return resp;
+    } catch (e) {
+      this.error(`Pick order failed: ${e.message}`);
+      return null;
+    }
+  }
+
   // ─── OVERRIDE IN YOUR BOT ───────────────────────────────────────────────────
-  //   chooseDeck()             → return one of the deck keys (e.g. 'AlphaStarterMerc')
-  //   decideMulligan(board)    → return true (keep) or false (redraw)
-  //   selectAction(wf, board)  → return an action object { step: ..., ... } or null
+  //   chooseDeck()              → return one of the deck keys (e.g. 'AlphaStarterMerc')
+  //   decideMulligan(board)     → return true (keep) or false (redraw)
+  //   decideCoinToss(gameData)  → return 'first' or 'second'
+  //   selectAction(wf, board)   → return an action object { step: ..., ... } or null
 
   selectAction(/* wf, board */) { return null; }
 }
