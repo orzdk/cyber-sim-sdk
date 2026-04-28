@@ -26,6 +26,12 @@ class CyberpunkBot extends EventEmitter {
   constructor(options = {}) {
     super();
     this.serverUrl = options.serverUrl || DEFAULT_SERVER_URL;
+    // Optional Fly machine pin. When set, every /api/rooms* and /api/lobby*
+    // request is suffixed with ?m=<id> so the server's fly-replay middleware
+    // routes us there. Without a pin, the LB chooses arbitrarily — fine for a
+    // single-machine deploy but means a multi-machine deploy will scatter
+    // bot rooms across whichever machine the LB happens to pick.
+    this.machineId = options.machineId || process.env.MACHINE_ID || null;
     this.name      = options.name      || 'Bot';
     this.deck      = options.deck      || null;
     this.roomId    = options.roomId    || null;
@@ -56,9 +62,17 @@ class CyberpunkBot extends EventEmitter {
 
   _client(url) { return url.protocol === 'https:' ? https : http; }
 
+  // Append ?m=<machineId> when pinning is active and the path is one the
+  // server's flyReplayPin middleware acts on (`/api/rooms*`, `/api/lobby*`).
+  _pin(path) {
+    if (!this.machineId) return path;
+    if (!path.startsWith('/api/rooms') && !path.startsWith('/api/lobby')) return path;
+    return path + (path.includes('?') ? '&' : '?') + 'm=' + encodeURIComponent(this.machineId);
+  }
+
   async httpGet(path) {
     return new Promise((resolve, reject) => {
-      const url = new URL(path, this.serverUrl);
+      const url = new URL(this._pin(path), this.serverUrl);
       this._client(url).get(url, res => {
         if (res.statusCode >= 400) { reject(new Error(`HTTP ${res.statusCode}`)); return; }
         let data = '';
@@ -73,7 +87,7 @@ class CyberpunkBot extends EventEmitter {
 
   async httpPost(path, body) {
     return new Promise((resolve, reject) => {
-      const url  = new URL(path, this.serverUrl);
+      const url  = new URL(this._pin(path), this.serverUrl);
       const data = JSON.stringify(body);
       const req  = this._client(url).request({
         protocol: url.protocol,
@@ -99,7 +113,7 @@ class CyberpunkBot extends EventEmitter {
 
   async httpDelete(path, body) {
     return new Promise((resolve, reject) => {
-      const url  = new URL(path, this.serverUrl);
+      const url  = new URL(this._pin(path), this.serverUrl);
       const data = JSON.stringify(body);
       const req  = this._client(url).request({
         protocol: url.protocol,
@@ -227,7 +241,7 @@ class CyberpunkBot extends EventEmitter {
   async connectSSE() {
     return new Promise((resolve, reject) => {
       try {
-        const url = new URL(`/api/rooms/${this.roomId}/events`, this.serverUrl);
+        const url = new URL(this._pin(`/api/rooms/${this.roomId}/events`), this.serverUrl);
         const req = this._client(url).get(url.toString(), res => {
           if (res.statusCode !== 200) { reject(new Error(`SSE failed: ${res.statusCode}`)); return; }
 

@@ -13,6 +13,8 @@
 //    node server-ai-mybot.js --join ABCD1234          (join existing room)
 //    node server-ai-mybot.js --human                  (500 ms delay between actions)
 //    SERVER_URL=https://cyber-sim.fly.dev node server-ai-mybot.js
+//    MACHINE_ID=<flyMachineId> node server-ai-mybot.js  (pin to a specific machine)
+//    node server-ai-mybot.js --machine <flyMachineId>
 // ─────────────────────────────────────────────────────────────────────────────
 
 const { CyberpunkBot } = require('./server-ai');
@@ -250,13 +252,15 @@ if (require.main === module) {
     if (args[i] === '--name'   && args[i+1]) { options.name      = args[i+1]; i++; }
     if (args[i] === '--deck'   && args[i+1]) { options.deck      = args[i+1]; i++; }
     if (args[i] === '--server' && args[i+1]) { options.serverUrl = args[i+1]; i++; }
+    if (args[i] === '--machine' && args[i+1]) { options.machineId = args[i+1]; i++; }
   }
 
   const bot = new MyBot(options);
   const target = options.serverUrl || process.env.SERVER_URL || 'http://localhost:3000';
 
+  const pin = options.machineId || process.env.MACHINE_ID || null;
   console.log(`\n🤖 ${bot.name}  deck=${options.deck || '(via chooseDeck)'}  mode=${options.host ? 'HOST' : `JOIN ${options.roomId}`}  speed=${options.humanDelay ? options.humanDelay+'ms' : 'robot'}`);
-  console.log(`   server=${target}\n`);
+  console.log(`   server=${target}${pin ? `  machine=${pin}` : ''}\n`);
 
   bot.play()
     .then(()  => process.exit(0))
