@@ -112,7 +112,7 @@ app.delete('/api/spawn/:roomId', (req, res) => {
   res.status(204).send();
 });
 
-app.listen(PORT, '0.0.0.0', () => {
+app.listen(PORT, '::', () => {
   console.log(`[LAUNCHER] Bot launcher listening on port ${PORT}`);
   console.log(`[LAUNCHER] Max capacity: ${MAX_CAPACITY} concurrent bots`);
 });
