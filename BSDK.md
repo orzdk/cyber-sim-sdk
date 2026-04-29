@@ -951,3 +951,600 @@ Cards that have scripts (non-trivial behavior):
 | α027 | AuraKeyword BLOCKER to equipped_host |
 | α028 | onPlay — GrantTempPower 4 to friendly unit, ScheduleDefeat it |
 | N001 | (no script) |
+
+
+'use strict';
+
+const { step } = require('../engine');
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  BOARD SETUP
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Create a fresh board from scratch (no decks, no players).
+ * Use setupTestGame() for a playable board.
+ */
+function createTestBoard() {
+  return {
+    p1: {
+      id: 'p1',
+      zones: emptyZones('p1'),
+      called_legend_this_turn: false,
+      sold_card_this_turn: false,
+      called_legend_defensive_this_turn: false,
+      tapped: [],
+      took_gig_this_turn: false,
+    },
+    p2: {
+      id: 'p2',
+      zones: emptyZones('p2'),
+      called_legend_this_turn: false,
+      sold_card_this_turn: false,
+      called_legend_defensive_this_turn: false,
+      tapped: [],
+      took_gig_this_turn: false,
+    },
+    turn_number: 1,
+    active_player: 'p1',
+    first_player: 'p1',
+    phase: 'play',
+    current_attack: null,
+    effect_stack: [],
+    scheduled_effects: [],
+    rate_limits: { p1: {}, p2: {} },
+    overtime: false,
+    winner: null,
+    _next_iid: 1,
+    _trace: [],
+  };
+}
+
+function emptyZones(id) {
+  return {
+    hand: [],
+    deck: [],
+    trash: [],
+    removed: [],
+    legends: [],
+    eddies: [],
+    field: [],
+    fixer: [
+      { iid: `${id}_d4`, sides: 4, value: 0 },
+      { iid: `${id}_d6`, sides: 6, value: 0 },
+      { iid: `${id}_d8`, sides: 8, value: 0 },
+      { iid: `${id}_d10`, sides: 10, value: 0 },
+      { iid: `${id}_d12`, sides: 12, value: 0 },
+      { iid: `${id}_d20`, sides: 20, value: 0 },
+    ],
+    gigs: [],
+  };
+}
+
+/**
+ * Create a playable test board with p1/p2 ready to play.
+ * Sets phase='play', turn_number=1, active_player=p1.
+ */
+function setupTestGame(p1DeckDef, p2DeckDef) {
+  const { setupGame } = require('../engine');
+  return setupGame(p1DeckDef, p2DeckDef, {}, {}, 'p1');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  STATE MUTATIONS (add cards/resources to board)
+// ─────────────────────────────────────────────────────────────────────────────
+
+let _nextIid = 1;
+
+function nextIid() {
+  return String(_nextIid++);
+}
+
+function resetIidCounter() {
+  _nextIid = 1;
+}
+
+/**
+ * Add a unit to the field.
+ * Options: { state, power, keywords, equippedGear, enteredPlayTurn }
+ */
+function addUnitToField(b, pid, cardId, opts = {}) {
+  const unit = {
+    iid: opts.iid || nextIid(),
+    card_id: cardId,
+    state: opts.state || 'ready',
+    equipped_gear: opts.equippedGear || [],
+    entered_play_turn: opts.enteredPlayTurn !== undefined ? opts.enteredPlayTurn : b.turn_number,
+  };
+  if (opts.power !== undefined) unit._temp_power = opts.power;
+  if (opts.keywords) unit._temp_keywords = opts.keywords;
+  if (opts.peeked) unit._peeked = true;
+  b[pid].zones.field.push(unit);
+  return unit.iid;
+}
+
+/**
+ * Add a legend to the player's legend zone.
+ * Options: { state, face, equipped }
+ */
+function addLegend(b, pid, cardId, opts = {}) {
+  const leg = {
+    iid: opts.iid || nextIid(),
+    card_id: cardId,
+    state: opts.state || 'ready',
+    face: opts.face || 'face_down',
+    equipped_gear: opts.equipped || [],
+  };
+  b[pid].zones.legends.push(leg);
+  return leg.iid;
+}
+
+/**
+ * Add a gig to the player's gig zone.
+ */
+function addGig(b, pid, sides, value, opts = {}) {
+  const gig = {
+    iid: opts.iid || nextIid(),
+    sides,
+    value,
+    origin_pid: opts.origin_pid || pid,
+  };
+  b[pid].zones.gigs.push(gig);
+  return gig.iid;
+}
+
+/**
+ * Add cards to hand.
+ */
+function addCardsToHand(b, pid, cardIds) {
+  for (const cid of cardIds) {
+    b[pid].zones.hand.push({ iid: nextIid(), card_id: cid });
+  }
+}
+
+/**
+ * Add cards to deck (top by default).
+ */
+function addCardsToDeck(b, pid, cardIds, opts = {}) {
+  const refs = cardIds.map(cid => ({ iid: nextIid(), card_id: cid }));
+  if (opts.bottom) {
+    b[pid].zones.deck.push(...refs);
+  } else {
+    b[pid].zones.deck.unshift(...refs);
+  }
+}
+
+/**
+ * Add a card to trash.
+ */
+function addCardToTrash(b, pid, cardId) {
+  b[pid].zones.trash.push({ iid: nextIid(), card_id: cardId });
+}
+
+/**
+ * Add an eddie (spent resource).
+ */
+function addEddie(b, pid, cardId, opts = {}) {
+  const eddie = {
+    iid: opts.iid || nextIid(),
+    card_id: cardId,
+    state: opts.state || 'ready',
+  };
+  b[pid].zones.eddies.push(eddie);
+  return eddie.iid;
+}
+
+/**
+ * Set a player's street cred by adding gigs with specified total value.
+ */
+function setStreetCred(b, pid, totalValue) {
+  // Clear existing gigs
+  b[pid].zones.gigs = [];
+  if (totalValue <= 0) return;
+
+  // Add one gig with the full value
+  addGig(b, pid, 20, totalValue);
+}
+
+/**
+ * Tap resources (move iids from ready to tapped).
+ */
+function tapResources(b, pid, iids) {
+  const p = b[pid];
+  for (const iid of iids) {
+    if (!p.tapped.includes(iid)) p.tapped.push(iid);
+  }
+}
+
+/**
+ * Spend a legend or eddie directly.
+ */
+function spendResource(b, pid, iid) {
+  const p = b[pid];
+  let found = p.zones.legends.find(x => x.iid === iid);
+  if (found) { found.state = 'spent'; return; }
+  found = p.zones.eddies.find(x => x.iid === iid);
+  if (found) { found.state = 'spent'; return; }
+}
+
+/**
+ * Ready a unit/legend/eddie.
+ */
+function readyResource(b, pid, iid) {
+  const p = b[pid];
+  let found = p.zones.field.find(x => x.iid === iid);
+  if (found) { found.state = 'ready'; return; }
+  found = p.zones.legends.find(x => x.iid === iid);
+  if (found) { found.state = 'ready'; return; }
+  found = p.zones.eddies.find(x => x.iid === iid);
+  if (found) { found.state = 'ready'; return; }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  GAME ACTIONS (step + input)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Execute a game step. Returns { status, board, waitingFor }.
+ */
+function gameStep(b, input, db, scripts) {
+  return step(b, input, db, scripts);
+}
+
+/**
+ * Play a card from hand.
+ */
+function playCard(b, pid, iid, opts = {}, db, scripts) {
+  const input = { step: 'play_card', iid };
+  if (opts.equip_to) input.equip_to = opts.equip_to;
+  return gameStep(b, input, db, scripts);
+}
+
+/**
+ * Tap a resource in play_phase.
+ */
+function tapResource(b, pid, iid, db, scripts) {
+  return gameStep(b, { step: 'tap_resource', iid }, db, scripts);
+}
+
+/**
+ * Untap a resource in play_phase.
+ */
+function untapResource(b, pid, iid, db, scripts) {
+  return gameStep(b, { step: 'untap_resource', iid }, db, scripts);
+}
+
+/**
+ * Sell a card.
+ */
+function sellCard(b, pid, iid, db, scripts) {
+  return gameStep(b, { step: 'sell_card', iid }, db, scripts);
+}
+
+/**
+ * Call a legend (costs 2 tapped).
+ */
+function callLegend(b, pid, iid, db, scripts) {
+  return gameStep(b, { step: 'call_legend', iid }, db, scripts);
+}
+
+/**
+ * End play phase / declare attack phase.
+ */
+function endPlayPhase(b, db, scripts) {
+  return gameStep(b, { step: 'end_phase' }, db, scripts);
+}
+
+/**
+ * Declare an attack.
+ */
+function declareAttack(b, pid, attackerIid, target, db, scripts) {
+  return gameStep(b, { step: 'declare_attack', attacker_iid: attackerIid, target }, db, scripts);
+}
+
+/**
+ * Block with a unit.
+ */
+function blockAttack(b, blockerIid, db, scripts) {
+  return gameStep(b, { step: 'blocker', iid: blockerIid }, db, scripts);
+}
+
+/**
+ * Pass defensive (no block, no legend call).
+ */
+function passDefensive(b, db, scripts) {
+  return gameStep(b, { step: 'pass_defensive' }, db, scripts);
+}
+
+/**
+ * Call a legend defensively.
+ */
+function callLegendDefensive(b, defenderPid, iid, db, scripts) {
+  return gameStep(b, { step: 'call_legend_defensive', iid }, db, scripts);
+}
+
+/**
+ * Choose gigs to steal.
+ */
+function chooseGigsToSteal(b, pid, iids, db, scripts) {
+  return gameStep(b, { step: 'choose_gig_to_steal', iids }, db, scripts);
+}
+
+/**
+ * Respond to an effect choice (halt).
+ * response shape depends on choice_needed.kind — see ENGINE_NOTES section 7.
+ */
+function respondToChoice(b, response, db, scripts) {
+  return gameStep(b, { step: 'effect_choice_response', response }, db, scripts);
+}
+
+/**
+ * Convenience: accept an optional effect.
+ */
+function acceptOptional(b, db, scripts) {
+  return respondToChoice(b, { accept: true }, db, scripts);
+}
+
+/**
+ * Convenience: reject an optional effect.
+ */
+function rejectOptional(b, db, scripts) {
+  return respondToChoice(b, { accept: false }, db, scripts);
+}
+
+/**
+ * Convenience: choose an amount.
+ */
+function chooseAmount(b, amount, db, scripts) {
+  return respondToChoice(b, { amount }, db, scripts);
+}
+
+/**
+ * Convenience: choose a unit by iid.
+ */
+function chooseUnit(b, iid, db, scripts) {
+  return respondToChoice(b, { iid }, db, scripts);
+}
+
+/**
+ * Convenience: choose a gig by iid.
+ */
+function chooseGig(b, iid, db, scripts) {
+  return respondToChoice(b, { iid }, db, scripts);
+}
+
+/**
+ * Convenience: choose cards from revealed top-n.
+ */
+function chooseFromTopN(b, iids, db, scripts) {
+  return respondToChoice(b, { selected_iids: iids }, db, scripts);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  ASSERTIONS / EXPECTATIONS
+// ─────────────────────────────────────────────────────────────────────────────
+
+function expectPhase(b, phase) {
+  if (b.phase !== phase) throw new Error(`Expected phase='${phase}' but got '${b.phase}'`);
+}
+
+function expectTurnNumber(b, turn) {
+  if (b.turn_number !== turn) throw new Error(`Expected turn ${turn} but got ${b.turn_number}`);
+}
+
+function expectActivePlayer(b, pid) {
+  if (b.active_player !== pid) throw new Error(`Expected active_player='${pid}' but got '${b.active_player}'`);
+}
+
+function expectWaitingFor(result, step, owner = null) {
+  if (!result.waitingFor) throw new Error(`Expected waitingFor but got ${result.status}`);
+  if (result.waitingFor.step !== step) {
+    throw new Error(`Expected waitingFor.step='${step}' but got '${result.waitingFor.step}'`);
+  }
+  if (owner && result.waitingFor.owner !== owner) {
+    throw new Error(`Expected owner='${owner}' but got '${result.waitingFor.owner}'`);
+  }
+}
+
+function expectEnded(result, winner = null) {
+  if (result.status !== 'ended') throw new Error(`Expected status='ended' but got '${result.status}'`);
+  if (winner && result.board.winner !== winner) {
+    throw new Error(`Expected winner='${winner}' but got '${result.board.winner}'`);
+  }
+}
+
+function expectUnitState(b, pid, iid, state) {
+  const u = b[pid].zones.field.find(x => x.iid === iid);
+  if (!u) throw new Error(`Unit ${iid} not found on ${pid}.field`);
+  if (u.state !== state) throw new Error(`Expected unit ${iid} state='${state}' but got '${u.state}'`);
+}
+
+function expectUnitReady(b, pid, iid) {
+  expectUnitState(b, pid, iid, 'ready');
+}
+
+function expectUnitSpent(b, pid, iid) {
+  expectUnitState(b, pid, iid, 'spent');
+}
+
+function expectFieldLength(b, pid, length) {
+  const actual = b[pid].zones.field.length;
+  if (actual !== length) throw new Error(`Expected field length ${length} but got ${actual}`);
+}
+
+function expectUnitDefeated(b, pid, iid) {
+  const u = b[pid].zones.field.find(x => x.iid === iid);
+  if (u) throw new Error(`Expected unit ${iid} to be defeated but it still exists`);
+}
+
+function expectGigs(b, pid, count) {
+  const actual = b[pid].zones.gigs.length;
+  if (actual !== count) throw new Error(`Expected ${count} gigs for ${pid} but got ${actual}`);
+}
+
+function expectGigValue(b, pid, gigIid, value) {
+  const gig = b[pid].zones.gigs.find(g => g.iid === gigIid);
+  if (!gig) throw new Error(`Gig ${gigIid} not found for ${pid}`);
+  if (gig.value !== value) throw new Error(`Expected gig value ${value} but got ${gig.value}`);
+}
+
+function expectStreetCred(b, pid, cred) {
+  const actual = b[pid].zones.gigs.reduce((s, g) => s + g.value, 0);
+  if (actual !== cred) throw new Error(`Expected street cred ${cred} for ${pid} but got ${actual}`);
+}
+
+function expectHandLength(b, pid, length) {
+  const actual = b[pid].zones.hand.length;
+  if (actual !== length) throw new Error(`Expected hand length ${length} but got ${actual}`);
+}
+
+function expectDeckLength(b, pid, length) {
+  const actual = b[pid].zones.deck.length;
+  if (actual !== length) throw new Error(`Expected deck length ${length} but got ${actual}`);
+}
+
+function expectTrashLength(b, pid, length) {
+  const actual = b[pid].zones.trash.length;
+  if (actual !== length) throw new Error(`Expected trash length ${length} but got ${actual}`);
+}
+
+function expectChoiceKind(result, kind) {
+  if (!result.waitingFor?.choice_needed) {
+    throw new Error(`Expected effect_choice but got ${result.waitingFor?.step || 'unknown'}`);
+  }
+  if (result.waitingFor.choice_needed.kind !== kind) {
+    throw new Error(`Expected choice kind='${kind}' but got '${result.waitingFor.choice_needed.kind}'`);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  FINDERS / UTILITIES
+// ─────────────────────────────────────────────────────────────────────────────
+
+function findUnit(b, pid, iid) {
+  return b[pid].zones.field.find(u => u.iid === iid);
+}
+
+function findLegend(b, pid, iid) {
+  return b[pid].zones.legends.find(l => l.iid === iid);
+}
+
+function findGig(b, pid, iid) {
+  return b[pid].zones.gigs.find(g => g.iid === iid);
+}
+
+function findCardInHand(b, pid, iid) {
+  return b[pid].zones.hand.find(c => c.iid === iid);
+}
+
+function findCardById(b, pid, cardId, zone = 'hand') {
+  const z = b[pid].zones[zone];
+  if (!z) return null;
+  return z.find(c => c.card_id === cardId);
+}
+
+function countUnitsWithKeyword(b, pid, keyword) {
+  return b[pid].zones.field.filter(u => {
+    const kw = (u._temp_keywords || []).map(k => k.toUpperCase());
+    return kw.includes(keyword.toUpperCase());
+  }).length;
+}
+
+function countReadyUnits(b, pid) {
+  return b[pid].zones.field.filter(u => u.state === 'ready').length;
+}
+
+function countSpentUnits(b, pid) {
+  return b[pid].zones.field.filter(u => u.state === 'spent').length;
+}
+
+function countReadyLegends(b, pid) {
+  return b[pid].zones.legends.filter(l => l.state === 'ready').length;
+}
+
+function countSpentLegends(b, pid) {
+  return b[pid].zones.legends.filter(l => l.state === 'spent').length;
+}
+
+function countFaceUpLegends(b, pid) {
+  return b[pid].zones.legends.filter(l => l.face === 'face_up').length;
+}
+
+function countFaceDownLegends(b, pid) {
+  return b[pid].zones.legends.filter(l => l.face === 'face_down').length;
+}
+
+module.exports = {
+  // Setup
+  createTestBoard,
+  setupTestGame,
+  resetIidCounter,
+  nextIid,
+
+  // Mutations
+  addUnitToField,
+  addLegend,
+  addGig,
+  addCardsToHand,
+  addCardsToDeck,
+  addCardToTrash,
+  addEddie,
+  setStreetCred,
+  tapResources,
+  spendResource,
+  readyResource,
+
+  // Actions
+  gameStep,
+  playCard,
+  tapResource,
+  untapResource,
+  sellCard,
+  callLegend,
+  endPlayPhase,
+  declareAttack,
+  blockAttack,
+  passDefensive,
+  callLegendDefensive,
+  chooseGigsToSteal,
+  respondToChoice,
+  acceptOptional,
+  rejectOptional,
+  chooseAmount,
+  chooseUnit,
+  chooseGig,
+  chooseFromTopN,
+
+  // Assertions
+  expectPhase,
+  expectTurnNumber,
+  expectActivePlayer,
+  expectWaitingFor,
+  expectEnded,
+  expectUnitState,
+  expectUnitReady,
+  expectUnitSpent,
+  expectFieldLength,
+  expectUnitDefeated,
+  expectGigs,
+  expectGigValue,
+  expectStreetCred,
+  expectHandLength,
+  expectDeckLength,
+  expectTrashLength,
+  expectChoiceKind,
+
+  // Finders
+  findUnit,
+  findLegend,
+  findGig,
+  findCardInHand,
+  findCardById,
+  countUnitsWithKeyword,
+  countReadyUnits,
+  countSpentUnits,
+  countReadyLegends,
+  countSpentLegends,
+  countFaceUpLegends,
+  countFaceDownLegends,
+};
