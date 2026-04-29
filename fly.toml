@@ -1,0 +1,31 @@
+app = 'cyber-sim-bots'
+primary_region = 'arn'
+
+[build]
+
+# Note: We do NOT use [http_service].
+# [http_service] automatically binds to public IPs (port 80 and 443).
+# We want this app to be completely private, accessible only via 6PN
+# at http://cyber-sim-bots.internal:8080
+
+[[services]]
+  internal_port = 8080
+  protocol = "tcp"
+  # OMITTING [[services.ports]] ensures it is NOT exposed to the public internet.
+  
+  # Crucial to prevent fly from automatically suspending the machine,
+  # as bot network traffic isn't seen as inbound HTTP requests by Fly's proxy.
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [services.concurrency]
+    type = 'requests'
+    hard_limit = 250
+    soft_limit = 200
+
+[[vm]]
+  size = 'shared-cpu-1x'
+  memory = '512mb'
+  cpu_kind = 'shared'
+  cpus = 1

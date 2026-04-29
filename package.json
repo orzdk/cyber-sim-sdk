@@ -1,0 +1,12 @@
+{
+  "name": "cyber-sim-bots",
+  "version": "1.0.0",
+  "description": "Bot launcher for Cyberpunk TCG",
+  "main": "launcher.js",
+  "scripts": {
+    "start": "node launcher.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}
