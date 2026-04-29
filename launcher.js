@@ -22,64 +22,60 @@ app.get('/api/status', (req, res) => {
 app.post('/api/spawn', (req, res) => {
   const { serverUrl, machineId, roomId, deckKey, botName } = req.body;
 
-  if (!serverUrl || !roomId) {
-    return res.status(400).json({ error: 'Missing required fields: serverUrl, roomId' });
+  if (!serverUrl) {
+    return res.status(400).json({ error: 'Missing required field: serverUrl' });
   }
 
   if (bots.size >= MAX_CAPACITY) {
     return res.status(503).json({ error: 'at_capacity' });
   }
 
-  if (bots.has(roomId)) {
-     // Idempotent: if already running for this room, just return ok
-     return res.status(200).json({ botPid: bots.get(roomId).pid, message: 'Already running' });
+  // For join-mode bots, deduplicate by roomId
+  if (roomId && bots.has(roomId)) {
+    return res.status(200).json({ botPid: bots.get(roomId).pid, message: 'Already running' });
   }
 
-  const args = [
-    path.join(__dirname, 'server-ai-mybot.js'),
-    '--join', roomId,
-    '--server', serverUrl
-  ];
+  // Host-mode bots get a temporary key until the bot creates its room
+  const botKey = roomId || `host-${Date.now()}`;
 
-  if (machineId) {
-    args.push('--machine', machineId);
+  const args = [path.join(__dirname, 'server-ai-mybot.js'), '--server', serverUrl];
+
+  if (roomId) {
+    args.push('--join', roomId);  // joiner mode
   }
-  if (deckKey) {
-    args.push('--deck', deckKey);
-  }
-  if (botName) {
-    args.push('--name', botName);
-  }
+  // else: host mode — bot creates its own room, enters, waits for human to join
+
+  if (machineId) args.push('--machine', machineId);
+  if (deckKey)   args.push('--deck',    deckKey);
+  if (botName)   args.push('--name',    botName);
 
   // Spawn the bot process
   const child = spawn('node', args, {
     stdio: 'inherit' // Pipe stdout/stderr to the launcher's logs so we can see them in Fly
   });
 
-  bots.set(roomId, child);
-  console.log(`[LAUNCHER] Spawned bot for room ${roomId} (PID: ${child.pid}). Active bots: ${bots.size}`);
+  bots.set(botKey, child);
+  console.log(`[LAUNCHER] Spawned bot (key=${botKey}, PID: ${child.pid}, mode=${roomId ? 'join' : 'host'}). Active bots: ${bots.size}`);
 
   // Enforce 30 minute maximum game duration
   const timeoutId = setTimeout(() => {
-    if (bots.has(roomId)) {
-      console.log(`[LAUNCHER] Bot for room ${roomId} exceeded maximum duration. Terminating.`);
-      const b = bots.get(roomId);
+    if (bots.has(botKey)) {
+      console.log(`[LAUNCHER] Bot (key=${botKey}) exceeded maximum duration. Terminating.`);
+      const b = bots.get(botKey);
       b.kill('SIGTERM');
-      setTimeout(() => {
-          if (!b.killed) b.kill('SIGKILL');
-      }, 5000);
+      setTimeout(() => { if (!b.killed) b.kill('SIGKILL'); }, 5000);
     }
   }, 30 * 60 * 1000);
 
   child.on('exit', (code, signal) => {
-    console.log(`[LAUNCHER] Bot for room ${roomId} exited (PID: ${child.pid}, Code: ${code}, Signal: ${signal})`);
-    bots.delete(roomId);
+    console.log(`[LAUNCHER] Bot (key=${botKey}) exited (PID: ${child.pid}, Code: ${code}, Signal: ${signal})`);
+    bots.delete(botKey);
     clearTimeout(timeoutId);
   });
 
   child.on('error', (err) => {
-    console.error(`[LAUNCHER] Failed to start bot for room ${roomId}:`, err);
-    bots.delete(roomId);
+    console.error(`[LAUNCHER] Failed to start bot (key=${botKey}):`, err);
+    bots.delete(botKey);
     clearTimeout(timeoutId);
   });
 
