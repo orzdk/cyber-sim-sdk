@@ -41,7 +41,10 @@ class CyberpunkBot extends EventEmitter {
     this.gameData  = null;
     this.db        = {};
 
-    this.botInfo            = options.botInfo || null;
+    this.preRoomId     = options.preRoomId     || null;
+    this.preOwnerToken = options.preOwnerToken || null;
+    this.requester     = options.requester     || null;
+    this.botInfo       = options.botInfo || (this.requester ? { name: options.name || 'MyBot', owner: this.requester } : null);
     this.humanDelay         = options.humanDelay || 0;
     this.isProcessing       = false;
     this.pendingStateChange = false;
@@ -210,7 +213,13 @@ class CyberpunkBot extends EventEmitter {
     if (this.isHost) {
       // Step 1: create the room (just reserves it, no player in yet)
       this.log('Creating room...');
-      const created = await this.httpPost('/api/rooms', { name: this.name, deckKey, botInfo: this.botInfo });
+      const created = await this.httpPost('/api/rooms', {
+        name:          this.name,
+        deckKey,
+        botInfo:       this.botInfo,
+        preRoomId:     this.preRoomId     || undefined,
+        preOwnerToken: this.preOwnerToken || undefined,
+      });
       this.roomId     = created.roomId;
       this.ownerToken = created.ownerToken;
       this.log(`Created room ${this.roomId}`);

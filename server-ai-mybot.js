@@ -247,12 +247,15 @@ if (require.main === module) {
   };
 
   for (let i = 0; i < args.length; i++) {
-    if (args[i] === '--join'   && args[i+1]) { options.roomId = args[i+1]; options.host = false; i++; }
-    if (args[i] === '--human')               { options.humanDelay = 500; }
-    if (args[i] === '--name'   && args[i+1]) { options.name      = args[i+1]; i++; }
-    if (args[i] === '--deck'   && args[i+1]) { options.deck      = args[i+1]; i++; }
-    if (args[i] === '--server' && args[i+1]) { options.serverUrl = args[i+1]; i++; }
-    if (args[i] === '--machine' && args[i+1]) { options.machineId = args[i+1]; i++; }
+    if (args[i] === '--join'             && args[i+1]) { options.roomId        = args[i+1]; options.host = false; i++; }
+    if (args[i] === '--human')                         { options.humanDelay    = 500; }
+    if (args[i] === '--name'             && args[i+1]) { options.name          = args[i+1]; i++; }
+    if (args[i] === '--deck'             && args[i+1]) { options.deck          = args[i+1]; i++; }
+    if (args[i] === '--server'           && args[i+1]) { options.serverUrl     = args[i+1]; i++; }
+    if (args[i] === '--machine'          && args[i+1]) { options.machineId     = args[i+1]; i++; }
+    if (args[i] === '--pre-room-id'      && args[i+1]) { options.preRoomId     = args[i+1]; i++; }
+    if (args[i] === '--pre-owner-token'  && args[i+1]) { options.preOwnerToken = args[i+1]; i++; }
+    if (args[i] === '--requester'        && args[i+1]) { options.requester     = args[i+1]; i++; }
   }
 
   const bot = new MyBot(options);

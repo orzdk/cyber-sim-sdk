@@ -20,7 +20,7 @@ app.get('/api/status', (req, res) => {
 });
 
 app.post('/api/spawn', (req, res) => {
-  const { serverUrl, machineId, roomId, deckKey, botName } = req.body;
+  const { serverUrl, machineId, roomId, deckKey, botName, requesterName, preRoomId, preOwnerToken } = req.body;
 
   if (!serverUrl) {
     return res.status(400).json({ error: 'Missing required field: serverUrl' });
@@ -42,8 +42,12 @@ app.post('/api/spawn', (req, res) => {
 
   if (roomId) {
     args.push('--join', roomId);  // joiner mode
+  } else {
+    args.push('--human');  // host mode — act at human speed so the player can react
+    if (preRoomId)     args.push('--pre-room-id',    preRoomId);
+    if (preOwnerToken) args.push('--pre-owner-token', preOwnerToken);
+    if (requesterName) args.push('--requester',       requesterName);
   }
-  // else: host mode — bot creates its own room, enters, waits for human to join
 
   if (machineId) args.push('--machine', machineId);
   if (deckKey)   args.push('--deck',    deckKey);
