@@ -394,9 +394,9 @@ class CyberpunkBot extends EventEmitter {
         return;
       }
 
-      // ── Mulligan ──
+      // ── Mulligan ── (sequential: only act when actively awaiting our answer)
       if (gd.status === 'mulligan') {
-        if (!gd.players[this.pid]?.mulliganed) {
+        if (gd.players[this.pid]?.mulliganed === false) {
           if (this.humanDelay) await this.sleep(this._humanTick());
           const keep = this.decideMulligan ? this.decideMulligan(gd.board) : true;
           await this._post_mulligan(keep);
