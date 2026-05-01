@@ -8,6 +8,10 @@ app.use(express.json());
 const PORT = process.env.PORT || 8080;
 const MAX_CAPACITY = 15;
 
+const BOT_REGISTRY = {
+  'v1_moron': { script: 'server-ai-mybot.js', name: 'Moron Bot v1', description: 'The original punching bag.' }
+};
+
 // Map to hold running bot processes: roomId -> ChildProcess
 const bots = new Map();
 
@@ -19,8 +23,12 @@ app.get('/api/status', (req, res) => {
   });
 });
 
+app.get('/api/bots', (req, res) => {
+  res.json(BOT_REGISTRY);
+});
+
 app.post('/api/spawn', (req, res) => {
-  const { serverUrl, machineId, roomId, deckKey, botName, requesterName, preRoomId, preOwnerToken } = req.body;
+  const { serverUrl, machineId, roomId, deckKey, botName, botId, requesterName, preRoomId, preOwnerToken, roomType } = req.body;
 
   if (!serverUrl) {
     return res.status(400).json({ error: 'Missing required field: serverUrl' });
@@ -38,7 +46,8 @@ app.post('/api/spawn', (req, res) => {
   // Host-mode bots get a temporary key until the bot creates its room
   const botKey = roomId || `host-${Date.now()}`;
 
-  const args = [path.join(__dirname, 'server-ai-mybot.js'), '--server', serverUrl];
+  const botConfig = BOT_REGISTRY[botId] || BOT_REGISTRY['v1_moron'];
+  const args = [path.join(__dirname, botConfig.script), '--server', serverUrl];
 
   if (roomId) {
     args.push('--join', roomId);  // joiner mode
@@ -47,6 +56,7 @@ app.post('/api/spawn', (req, res) => {
     if (preRoomId)     args.push('--pre-room-id',    preRoomId);
     if (preOwnerToken) args.push('--pre-owner-token', preOwnerToken);
     if (requesterName) args.push('--requester',       requesterName);
+    if (roomType)      args.push('--room-type',       roomType);
   }
 
   if (machineId) args.push('--machine', machineId);
@@ -61,26 +71,30 @@ app.post('/api/spawn', (req, res) => {
   bots.set(botKey, child);
   console.log(`[LAUNCHER] Spawned bot (key=${botKey}, PID: ${child.pid}, mode=${roomId ? 'join' : 'host'}). Active bots: ${bots.size}`);
 
-  // Enforce 30 minute maximum game duration
-  const timeoutId = setTimeout(() => {
-    if (bots.has(botKey)) {
-      console.log(`[LAUNCHER] Bot (key=${botKey}) exceeded maximum duration. Terminating.`);
-      const b = bots.get(botKey);
-      b.kill('SIGTERM');
-      setTimeout(() => { if (!b.killed) b.kill('SIGKILL'); }, 5000);
-    }
-  }, 30 * 60 * 1000);
+  // Enforce 30 minute maximum game duration only if it's NOT a battleground bot
+  // We can let battleground bots live until evicted by main server
+  let timeoutId;
+  if (roomType !== 'bvb') {
+    timeoutId = setTimeout(() => {
+      if (bots.has(botKey)) {
+        console.log(`[LAUNCHER] Bot (key=${botKey}) exceeded maximum duration. Terminating.`);
+        const b = bots.get(botKey);
+        b.kill('SIGTERM');
+        setTimeout(() => { if (!b.killed) b.kill('SIGKILL'); }, 5000);
+      }
+    }, 30 * 60 * 1000);
+  }
 
   child.on('exit', (code, signal) => {
     console.log(`[LAUNCHER] Bot (key=${botKey}) exited (PID: ${child.pid}, Code: ${code}, Signal: ${signal})`);
     bots.delete(botKey);
-    clearTimeout(timeoutId);
+    if (timeoutId) clearTimeout(timeoutId);
   });
 
   child.on('error', (err) => {
     console.error(`[LAUNCHER] Failed to start bot (key=${botKey}):`, err);
     bots.delete(botKey);
-    clearTimeout(timeoutId);
+    if (timeoutId) clearTimeout(timeoutId);
   });
 
   res.status(201).json({ botPid: child.pid });

@@ -44,6 +44,7 @@ class CyberpunkBot extends EventEmitter {
     this.preRoomId     = options.preRoomId     || null;
     this.preOwnerToken = options.preOwnerToken || null;
     this.requester     = options.requester     || null;
+    this.roomType      = options.roomType      || 'pvp';
     this.botInfo       = options.botInfo || (this.requester ? { name: options.name || 'MyBot', owner: this.requester } : null);
     this.humanDelay         = options.humanDelay || 0;
     this.isProcessing       = false;
@@ -216,6 +217,7 @@ class CyberpunkBot extends EventEmitter {
       const created = await this.httpPost('/api/rooms', {
         name:          this.name,
         deckKey,
+        roomType:      this.roomType,
         botInfo:       this.botInfo,
         preRoomId:     this.preRoomId     || undefined,
         preOwnerToken: this.preOwnerToken || undefined,
@@ -485,9 +487,10 @@ class CyberpunkBot extends EventEmitter {
       this.ownerToken = null;
 
       const created = await this.httpPost('/api/rooms', {
-        name:    this.name,
-        deckKey: this.deck,
-        botInfo: this.botInfo,
+        name:     this.name,
+        deckKey:  this.deck,
+        roomType: this.roomType,
+        botInfo:  this.botInfo,
       });
       this.roomId     = created.roomId;
       this.ownerToken = created.ownerToken;
