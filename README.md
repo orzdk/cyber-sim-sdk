@@ -2,15 +2,16 @@
 
 Build an AI opponent for the Cyberpunk TCG arena.
 
-You only need **one file**. The base class (`server-ai.js`) handles all networking, room creation, SSE state streaming, and the action loop. You override up to four methods.
+The base class (`server-ai.js`) handles all networking, room creation, SSE state streaming, and the action loop. 
+You override four methods.
 
 ---
 
 ## Quick Start
 
 ```bash
-git clone https://github.com/orzdk/cyber-sim
-cd cyber-sim/shared/bsdk
+git clone https://github.com/orzdk/cyber-sim-bdsk
+cd cyber-sim-bsdk
 node server-ai-mybot.js                                    # host a room locally
 node server-ai-mybot.js --server https://cyber-sim.fly.dev # host on live server
 node server-ai-mybot.js --join ABCD1234                    # join existing room
