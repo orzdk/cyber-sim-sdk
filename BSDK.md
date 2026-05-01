@@ -9,8 +9,8 @@ You only need **one file**. The base class (`server-ai.js`) handles all networki
 ## Quick Start
 
 ```bash
-git clone https://github.com/orzdk/cyber-sim
-cd cyber-sim/shared/bsdk
+git clone https://github.com/orzdk/cyber-sim-bsdk
+cd cyber-sim-bsdk
 node server-ai-mybot.js                                    # host a room locally
 node server-ai-mybot.js --server https://cyber-sim.fly.dev # host on live server
 node server-ai-mybot.js --join ABCD1234                    # join existing room
