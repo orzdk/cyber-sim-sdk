@@ -24,6 +24,17 @@ min_machines_running = 1
     hard_limit = 250
     soft_limit = 200
 
+  # Probe /api/status (defined in launcher.js). If it stops answering, Fly
+  # restarts the machine — without this, a wedged launcher silently breaks
+  # all bot-spawn requests until someone notices.
+  [[services.http_checks]]
+    interval     = '30s'
+    timeout      = '5s'
+    grace_period = '10s'
+    method       = 'get'
+    path         = '/api/status'
+    protocol     = 'http'
+
 [[vm]]
   size = 'shared-cpu-1x'
   memory = '512mb'
