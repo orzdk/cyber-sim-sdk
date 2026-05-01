@@ -254,6 +254,10 @@ if (require.main === module) {
     if (args[i] === '--requester'        && args[i+1]) { options.requester     = args[i+1]; i++; }
     if (args[i] === '--correlation-id'   && args[i+1]) { options.correlationId = args[i+1]; i++; }
     if (args[i] === '--admin-token'      && args[i+1]) { options.adminToken    = args[i+1]; i++; }
+    if (args[i] === '--seat-room'        && args[i+1]) { options.seatRoom      = args[i+1]; i++; }
+    if (args[i] === '--seat-token'       && args[i+1]) { options.seatToken     = args[i+1]; i++; }
+    if (args[i] === '--seat-pid'         && args[i+1]) { options.seatPid       = args[i+1]; i++; }
+    if (args[i] === '--model'            && args[i+1]) { options.model         = args[i+1]; i++; }
   }
 
   const bot = new MyBot(options);

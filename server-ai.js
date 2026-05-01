@@ -44,6 +44,12 @@ class CyberpunkBot extends EventEmitter {
     this.correlationId = options.correlationId || null;
     this.adminToken    = options.adminToken    || null;
     this.requester     = options.requester     || null;
+    this.model         = options.model         || null;   // BOT_REGISTRY key — surfaced in lobby tiles
+    // Snapshot-injection seat: when set, the bot skips room creation entirely
+    // and simply takes its assigned slot in an existing injected room.
+    this.seatRoom      = options.seatRoom  || null;
+    this.seatToken     = options.seatToken || null;
+    this.seatPid       = options.seatPid   || null;
     this.botInfo       = options.botInfo || (this.requester ? { name: options.name || 'MyBot', owner: this.requester } : null);
     this.humanDelay         = options.humanDelay || 0;
     this.isProcessing       = false;
@@ -207,6 +213,18 @@ class CyberpunkBot extends EventEmitter {
     for (const card of cards) this.db[card.number] = card;
     this.log(`Loaded ${cards.length} cards`);
 
+    // ── Seat mode: snapshot inject pre-arranged a slot for us ──
+    if (this.seatToken && this.seatRoom && this.seatPid) {
+      this.roomId = this.seatRoom;
+      this.token  = this.seatToken;
+      this.pid    = this.seatPid;
+      this.log(`Taking pre-arranged seat ${this.pid} in injected room ${this.roomId}`);
+      const state = await this.httpGet(`/api/rooms/${this.roomId}/state?token=${encodeURIComponent(this.token)}`);
+      this.gameData = state;
+      this.log(`Initial status: ${state.status}`);
+      return;
+    }
+
     const deckKey = this.deck || (this.chooseDeck ? await this.chooseDeck() : 'AlphaStarterMerc');
     this.deck = deckKey;
 
@@ -217,6 +235,7 @@ class CyberpunkBot extends EventEmitter {
         name:          this.name,
         deckKey,
         botInfo:       this.botInfo,
+        botModel:      this.model         || undefined,
         correlationId: this.correlationId || undefined,
         adminToken:    this.adminToken    || undefined,
       });
@@ -234,7 +253,9 @@ class CyberpunkBot extends EventEmitter {
 
     } else {
       this.log(`Joining room ${this.roomId}...`);
-      const result = await this.httpPost(`/api/rooms/${this.roomId}/join`, { name: this.name, deckKey });
+      const result = await this.httpPost(`/api/rooms/${this.roomId}/join`, {
+        name: this.name, deckKey, botModel: this.model || undefined,
+      });
       this.token = result.token;
       this.pid   = result.pid;
       this.log(`Joined as ${this.pid}`);
@@ -363,11 +384,17 @@ class CyberpunkBot extends EventEmitter {
     }
   }
 
+  // Clean shutdown — the bot is leaving on purpose (room evicted, deleted by
+  // owner, etc.). Resolves play()'s Promise so the CLI exits 0 instead of
+  // treating it as a fatal crash.
   stop(reason = 'stopped') {
     if (this._stopped) return;
     this._stopped = true;
     try { if (this.sseConnection) this.sseConnection.destroy(); } catch (_) {}
-    this.emit('fatal', new Error(reason));
+    const payload = { stopped: true, reason };
+    this.result = payload;
+    this.log(`Stopping — reason: ${reason}`);
+    this.emit('game_over', payload);
   }
 
   async _actionLoop() {
@@ -490,9 +517,10 @@ class CyberpunkBot extends EventEmitter {
       this.ownerToken = null;
 
       const created = await this.httpPost('/api/rooms', {
-        name:    this.name,
-        deckKey: this.deck,
-        botInfo: this.botInfo,
+        name:     this.name,
+        deckKey:  this.deck,
+        botInfo:  this.botInfo,
+        botModel: this.model || undefined,
       });
       this.roomId     = created.roomId;
       this.ownerToken = created.ownerToken;

@@ -27,7 +27,7 @@ app.get('/api/bots', (req, res) => {
 });
 
 app.post('/api/spawn', (req, res) => {
-  const { serverUrl, machineId, roomId, deckKey, botName, botId, requesterName, correlationId, adminToken, human } = req.body;
+  const { serverUrl, machineId, roomId, deckKey, botName, botId, requesterName, correlationId, adminToken, seatRoom, seatToken, seatPid, human } = req.body;
 
   if (!serverUrl) {
     return res.status(400).json({ error: 'Missing required field: serverUrl' });
@@ -42,13 +42,22 @@ app.post('/api/spawn', (req, res) => {
     return res.status(200).json({ botPid: bots.get(roomId).pid, message: 'Already running' });
   }
 
-  // Host-mode bots get a temporary key until the bot creates its room
-  const botKey = roomId || `host-${Date.now()}`;
+  // Bot tracking key. Seat-mode bots key on the injected room; join-mode on
+  // the target room; host-mode gets a placeholder until they create theirs.
+  const botKey = seatRoom || roomId || `host-${Date.now()}`;
 
-  const botConfig = BOT_REGISTRY[botId] || BOT_REGISTRY[DEFAULT_BOT_ID];
+  const resolvedBotId = BOT_REGISTRY[botId] ? botId : DEFAULT_BOT_ID;
+  const botConfig     = BOT_REGISTRY[resolvedBotId];
   const args = [path.join(__dirname, botConfig.script), '--server', serverUrl];
+  args.push('--model', resolvedBotId);   // for the bot to self-identify in lobby tiles
 
-  if (roomId) {
+  if (seatToken && seatRoom && seatPid) {
+    // Snapshot-injected seat — bot connects directly with a pre-issued token.
+    args.push('--seat-room',  seatRoom);
+    args.push('--seat-token', seatToken);
+    args.push('--seat-pid',   seatPid);
+    if (human) args.push('--human');
+  } else if (roomId) {
     args.push('--join', roomId);                     // joiner mode
     if (human) args.push('--human');                 // BVB joiners need slow pacing too
   } else {

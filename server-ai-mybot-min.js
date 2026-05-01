@@ -37,6 +37,10 @@ if (require.main === module) {
     if (args[i] === '--requester'      && args[i+1]) { opts.requester     = args[++i]; }
     if (args[i] === '--correlation-id' && args[i+1]) { opts.correlationId = args[++i]; }
     if (args[i] === '--admin-token'    && args[i+1]) { opts.adminToken    = args[++i]; }
+    if (args[i] === '--seat-room'      && args[i+1]) { opts.seatRoom      = args[++i]; }
+    if (args[i] === '--seat-token'     && args[i+1]) { opts.seatToken     = args[++i]; }
+    if (args[i] === '--seat-pid'       && args[i+1]) { opts.seatPid       = args[++i]; }
+    if (args[i] === '--model'          && args[i+1]) { opts.model         = args[++i]; }
   }
   const bot = new MinBot(opts);
   console.log(`MinBot  deck=${opts.deck || 'AlphaStarterMerc'}  mode=${opts.host ? 'HOST' : 'JOIN ' + opts.roomId}`);
