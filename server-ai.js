@@ -41,10 +41,9 @@ class CyberpunkBot extends EventEmitter {
     this.gameData  = null;
     this.db        = {};
 
-    this.preRoomId     = options.preRoomId     || null;
-    this.preOwnerToken = options.preOwnerToken || null;
+    this.correlationId = options.correlationId || null;
+    this.adminToken    = options.adminToken    || null;
     this.requester     = options.requester     || null;
-    this.roomType      = options.roomType      || 'pvp';
     this.botInfo       = options.botInfo || (this.requester ? { name: options.name || 'MyBot', owner: this.requester } : null);
     this.humanDelay         = options.humanDelay || 0;
     this.isProcessing       = false;
@@ -217,10 +216,9 @@ class CyberpunkBot extends EventEmitter {
       const created = await this.httpPost('/api/rooms', {
         name:          this.name,
         deckKey,
-        roomType:      this.roomType,
         botInfo:       this.botInfo,
-        preRoomId:     this.preRoomId     || undefined,
-        preOwnerToken: this.preOwnerToken || undefined,
+        correlationId: this.correlationId || undefined,
+        adminToken:    this.adminToken    || undefined,
       });
       this.roomId     = created.roomId;
       this.ownerToken = created.ownerToken;
@@ -242,7 +240,7 @@ class CyberpunkBot extends EventEmitter {
       this.log(`Joined as ${this.pid}`);
     }
 
-    const state = await this.httpGet(`/api/rooms/${this.roomId}/state`);
+    const state = await this.httpGet(`/api/rooms/${this.roomId}/state?token=${encodeURIComponent(this.token)}`);
     this.gameData = state;
     this.log(`Initial status: ${state.status}`);
   }
@@ -252,7 +250,7 @@ class CyberpunkBot extends EventEmitter {
   async connectSSE() {
     return new Promise((resolve, reject) => {
       try {
-        const url = new URL(this._pin(`/api/rooms/${this.roomId}/events`), this.serverUrl);
+        const url = new URL(this._pin(`/api/rooms/${this.roomId}/events?token=${encodeURIComponent(this.token)}`), this.serverUrl);
         const req = this._client(url).get(url.toString(), res => {
           if (res.statusCode !== 200) { reject(new Error(`SSE failed: ${res.statusCode}`)); return; }
 
@@ -267,6 +265,11 @@ class CyberpunkBot extends EventEmitter {
               if (match && match[1] === 'state') {
                 try { this.emit('state', JSON.parse(match[2])); }
                 catch (e) { this.error('State parse error:', e.message); }
+              } else if (match && match[1] === 'evicted') {
+                // Server kicked us out (room deleted by human or evicted by TTL).
+                // Stop cleanly — don't trigger the host-mode re-warm path.
+                this.log('Room evicted by server — shutting down.');
+                this.stop('evicted');
               }
             }
           });
@@ -279,7 +282,7 @@ class CyberpunkBot extends EventEmitter {
               if (this._stopped || this.result) return;
               try {
                 await this.connectSSE();
-                const fresh = await this.httpGet(`/api/rooms/${this.roomId}/state`).catch(() => null);
+                const fresh = await this.httpGet(`/api/rooms/${this.roomId}/state?token=${encodeURIComponent(this.token)}`).catch(() => null);
                 if (fresh) {
                   this.log(`SSE reconnected — re-syncing state: step=${fresh.waitingFor?.step} owner=${fresh.waitingFor?.owner}`);
                   this.gameData = fresh;
@@ -452,7 +455,7 @@ class CyberpunkBot extends EventEmitter {
     let result = gd.result || null;
     if (!result?.winner) {
       try {
-        const fresh = await this.httpGet(`/api/rooms/${this.roomId}/state`);
+        const fresh = await this.httpGet(`/api/rooms/${this.roomId}/state?token=${encodeURIComponent(this.token)}`);
         result = fresh.result || result || {};
       } catch (_) { result = result || {}; }
     }
@@ -487,10 +490,9 @@ class CyberpunkBot extends EventEmitter {
       this.ownerToken = null;
 
       const created = await this.httpPost('/api/rooms', {
-        name:     this.name,
-        deckKey:  this.deck,
-        roomType: this.roomType,
-        botInfo:  this.botInfo,
+        name:    this.name,
+        deckKey: this.deck,
+        botInfo: this.botInfo,
       });
       this.roomId     = created.roomId;
       this.ownerToken = created.ownerToken;
@@ -499,7 +501,7 @@ class CyberpunkBot extends EventEmitter {
       this.token = entered.token;
       this.pid   = entered.pid;
 
-      const state = await this.httpGet(`/api/rooms/${this.roomId}/state`);
+      const state = await this.httpGet(`/api/rooms/${this.roomId}/state?token=${encodeURIComponent(this.token)}`);
       this.gameData = state;
 
       this.emit('ready', { roomId: this.roomId, pid: this.pid });

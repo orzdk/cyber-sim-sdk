@@ -18,16 +18,14 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 const { CyberpunkBot } = require('./server-ai');
-const config = require('./server-ai-mybot.config.json');
 
 class MyBot extends CyberpunkBot {
 
   constructor(options = {}) {
-    super({
-      ...options,
-      botInfo: { name: config.botName, owner: config.owner },
-    });
-    this.name = options.name || config.botName;
+    super(options);
+    // Player handle comes from --name (set per-spawn by the launcher); the
+    // parent CyberpunkBot derives botInfo from name + requester.
+    if (options.name) this.name = options.name;
   }
 
   // ── Which deck to play ────────────────────────────────────────────────────
@@ -253,9 +251,9 @@ if (require.main === module) {
     if (args[i] === '--deck'             && args[i+1]) { options.deck          = args[i+1]; i++; }
     if (args[i] === '--server'           && args[i+1]) { options.serverUrl     = args[i+1]; i++; }
     if (args[i] === '--machine'          && args[i+1]) { options.machineId     = args[i+1]; i++; }
-    if (args[i] === '--pre-room-id'      && args[i+1]) { options.preRoomId     = args[i+1]; i++; }
-    if (args[i] === '--pre-owner-token'  && args[i+1]) { options.preOwnerToken = args[i+1]; i++; }
     if (args[i] === '--requester'        && args[i+1]) { options.requester     = args[i+1]; i++; }
+    if (args[i] === '--correlation-id'   && args[i+1]) { options.correlationId = args[i+1]; i++; }
+    if (args[i] === '--admin-token'      && args[i+1]) { options.adminToken    = args[i+1]; i++; }
   }
 
   const bot = new MyBot(options);

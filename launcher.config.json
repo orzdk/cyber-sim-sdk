@@ -1,0 +1,13 @@
+{
+  "punkbot-moron-v1": {
+    "script": "server-ai-mybot.js",
+    "description": "The original punching bag.",
+    "owner": "ElGwapQ"
+  }
+  ,
+  "punkbot-skipall-v1": {
+    "script": "server-ai-mybot-min.js",
+    "description": "Just skips everything",
+    "owner": "ElGwapQ"
+  }
+}
