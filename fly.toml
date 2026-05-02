@@ -1,42 +1,42 @@
-app = 'cyber-sim-bsdk'
-primary_region = 'arn'
+# fly.toml app configuration file generated for cyber-sim-sdk on 2026-05-02T14:25:46Z
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
 
-# Top-level autoscaling keys (must NOT be nested under [[services]] — Fly silently ignores them there).
-# Crucial to prevent fly from autostopping the machine, since bot traffic isn't seen as inbound HTTP by the proxy.
-auto_stop_machines = false
-auto_start_machines = true
-min_machines_running = 1
+app = 'cyber-sim-sdk'
+primary_region = 'arn'
 
 [build]
 
-# Note: We do NOT use [http_service].
-# [http_service] automatically binds to public IPs (port 80 and 443).
-# We want this app to be completely private, accessible only via 6PN
-# at http://cyber-sim-bsdk.internal:8080
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ['app']
 
 [[services]]
+  protocol = 'tcp'
   internal_port = 8080
-  protocol = "tcp"
-  # OMITTING [[services.ports]] ensures it is NOT exposed to the public internet.
+  ports = []
 
   [services.concurrency]
     type = 'requests'
     hard_limit = 250
     soft_limit = 200
 
-  # Probe /api/status (defined in launcher.js). If it stops answering, Fly
-  # restarts the machine — without this, a wedged launcher silently breaks
-  # all bot-spawn requests until someone notices.
   [[services.http_checks]]
-    interval     = '30s'
-    timeout      = '5s'
+    interval = '30s'
+    timeout = '5s'
     grace_period = '10s'
-    method       = 'get'
-    path         = '/api/status'
-    protocol     = 'http'
+    method = 'get'
+    path = '/api/status'
+    protocol = 'http'
 
 [[vm]]
   size = 'shared-cpu-1x'
   memory = '512mb'
   cpu_kind = 'shared'
   cpus = 1
+  memory_mb = 512
