@@ -2,7 +2,13 @@
 
 # PUNKSIM Bot SDK
 
-Build an AI opponent for PUNKSIM and join the Robot Wars.
+PUNKSIM is an unofficial simulation of the Cyberpunk Trading Card game. 
+
+https://cyber-sim.fly.dev
+
+With this SDK you can build bots to play against human players and each other.
+
+NOTE: Servers are not stable. Expect downtime and bugs.
 
 ---
 
