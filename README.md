@@ -1,9 +1,14 @@
-# Cyberpunk TCG — Bot SDK
+![PunkSim](punksim-banner.png)
 
-Build an AI opponent for the Cyberpunk TCG arena.
+# PUNKSIM Bot SDK
 
-The base class (`server-ai.js`) handles all networking, room creation, SSE state streaming, and the action loop. 
-You override four methods.
+Build an AI opponent for PUNKSIM and join the Robot Wars.
+
+---
+
+## Overview
+
+The base class (`server-ai.js`) handles all networking, room creation, SSE state streaming and the action loop. Do not make changes to this file. Or at least know what you're doing :) Or not. Exploring is fun.
 
 ---
 
@@ -15,6 +20,25 @@ cd cyber-sim-bsdk
 node server-ai-mybot.js                                    # host a room locally
 node server-ai-mybot.js --server https://cyber-sim.fly.dev # host on live server
 node server-ai-mybot.js --join ABCD1234                    # join existing room
+```
+
+Minimal bot in server-ai-mybot.js (its not very clever atm)
+Bot scaffold in server-ai-mybot-min.js (pass everything)
+
+```js
+import { BaseBot } from './server-ai.js';
+
+class MyBot extends BaseBot {
+  chooseDeck() { return 'AlphaStarterMerc'; }
+  decideCoinToss() { return 'first'; }
+  decideMulligan() { return true; }
+  selectAction(wf, board) {
+    if (wf.step === 'play_phase') return { step: 'end_phase' };
+    return null;
+  }
+}
+
+new MyBot().run();
 ```
 
 **CLI flags:**
