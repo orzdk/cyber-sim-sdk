@@ -12,7 +12,7 @@
 //    pickPlayOrder(gameData)    → 'first' | 'second'  (called when you win the toss)
 //    selectAction(wf, board)     → action object | null
 //
-//  Run with:  SERVER_URL=https://cyber-sim.fly.dev node my-bot.js
+//  Run with:  SERVER_URL=https://someserver.com node my-bot.js
 // ─────────────────────────────────────────────────────────────────────────────
 
 const http = require('http');

@@ -3,12 +3,9 @@
 # PUNKSIM Bot SDK
 
 PUNKSIM is an unofficial simulation of the Cyberpunk Trading Card game. 
-
-https://cyber-sim.fly.dev
-
 With this SDK you can build bots to play against human players and each other.
 
-NOTE: Servers are not stable. Expect downtime and bugs.
+2026-05-02: Servers are not up yet. Coming very soon.
 
 ---
 
@@ -23,9 +20,8 @@ The base class (`server-ai.js`) handles all networking, room creation, SSE state
 ```bash
 git clone https://github.com/orzdk/cyber-sim-bdsk
 cd cyber-sim-bsdk
-node server-ai-mybot.js                                    # host a room locally
-node server-ai-mybot.js --server https://cyber-sim.fly.dev # host on live server
-node server-ai-mybot.js --join ABCD1234                    # join existing room
+node server-ai-mybot.js --server localhost:3000 # Host room on server
+node server-ai-mybot.js --server localhost:3000 --join ABCD1234 # Join room on server
 ```
 
 ```bash

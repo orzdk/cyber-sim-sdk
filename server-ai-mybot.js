@@ -12,7 +12,7 @@
 //    node server-ai-mybot.js                          (host a room)
 //    node server-ai-mybot.js --join ABCD1234          (join existing room)
 //    node server-ai-mybot.js --human                  (500 ms delay between actions)
-//    SERVER_URL=https://cyber-sim.fly.dev node server-ai-mybot.js
+//    SERVER_URL=https://someserver.com node server-ai-mybot.js
 //    MACHINE_ID=<flyMachineId> node server-ai-mybot.js  (pin to a specific machine)
 //    node server-ai-mybot.js --machine <flyMachineId>
 // ─────────────────────────────────────────────────────────────────────────────
