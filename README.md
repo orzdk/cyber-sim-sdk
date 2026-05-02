@@ -22,15 +22,17 @@ node server-ai-mybot.js --server https://cyber-sim.fly.dev # host on live server
 node server-ai-mybot.js --join ABCD1234                    # join existing room
 ```
 
+```bash
 Minimal bot in server-ai-mybot.js (its not very clever atm)
 Bot scaffold in server-ai-mybot-min.js (pass everything)
+```
 
 ```js
 import { BaseBot } from './server-ai.js';
 
 class MyBot extends BaseBot {
   chooseDeck() { return 'AlphaStarterMerc'; }
-  decideCoinToss() { return 'first'; }
+  pickPlayOrder() { return 'first'; }
   decideMulligan() { return true; }
   selectAction(wf, board) {
     if (wf.step === 'play_phase') return { step: 'end_phase' };
@@ -64,12 +66,12 @@ Return a deck key string. Available decks live in `decks/`.
 chooseDeck() { return 'AlphaStarterMerc'; }
 ```
 
-### `decideCoinToss(gameData)`
+### `pickPlayOrder(gameData)`
 
 Called when you win the coin toss. Return `'first'` or `'second'`.
 
 ```js
-decideCoinToss(gameData) { return 'first'; }
+pickPlayOrder(gameData) { return 'first'; }
 ```
 
 ### `decideMulligan(board)`

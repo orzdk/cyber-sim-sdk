@@ -9,7 +9,7 @@
 //
 //    chooseDeck()                → 'AlphaStarterMerc' | 'AlphaStarterArasaka' | ...
 //    decideMulligan(board)       → true (keep) | false (redraw)
-//    decideCoinToss(gameData)    → 'first' | 'second'  (called when you win the toss)
+//    pickPlayOrder(gameData)    → 'first' | 'second'  (called when you win the toss)
 //    selectAction(wf, board)     → action object | null
 //
 //  Run with:  SERVER_URL=https://cyber-sim.fly.dev node my-bot.js
@@ -417,7 +417,7 @@ class CyberpunkBot extends EventEmitter {
         const winner = gd.coinToss?.winner;
         if (winner === this.pid) {
           if (this.humanDelay) await this.sleep(this._humanTick());
-          const choice = this.decideCoinToss ? this.decideCoinToss(gd) : 'first';
+          const choice = this.pickPlayOrder ? this.pickPlayOrder(gd) : 'first';
           this.log(`Coin toss won — picking: ${choice}`);
           await this._post_pick_order(choice);
         } else {
@@ -597,7 +597,7 @@ class CyberpunkBot extends EventEmitter {
   // ─── OVERRIDE IN YOUR BOT ───────────────────────────────────────────────────
   //   chooseDeck()              → return one of the deck keys (e.g. 'AlphaStarterMerc')
   //   decideMulligan(board)     → return true (keep) or false (redraw)
-  //   decideCoinToss(gameData)  → return 'first' or 'second'
+  //   pickPlayOrder(gameData)  → return 'first' or 'second'
   //   selectAction(wf, board)   → return an action object { step: ..., ... } or null
 
   selectAction(/* wf, board */) { return null; }

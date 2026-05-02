@@ -36,7 +36,7 @@ class MyBot extends CyberpunkBot {
 
   // ── Coin toss ─────────────────────────────────────────────────────────────
 
-  decideCoinToss(/* gameData */) {
+  pickPlayOrder(/* gameData */) {
     return 'first';
   }
 

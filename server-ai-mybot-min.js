@@ -7,7 +7,7 @@ class MinBot extends CyberpunkBot {
 
   chooseDeck() { return 'AlphaStarterMerc'; }
 
-  decideCoinToss() { return 'first'; }
+  pickPlayOrder() { return 'first'; }
 
   decideMulligan() { return true; }
 
