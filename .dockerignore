@@ -1,0 +1,8 @@
+node_modules
+.git
+*.log
+fly.toml
+README.md
+punksim-banner.png
+Dockerfile
+.dockerignore

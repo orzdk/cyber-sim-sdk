@@ -1,0 +1,151 @@
+EP-001 | Yorinobu Arasaka: Embracing Destruction | The first time a friendly ARASAKA Unit attacks each turn, draw 1. Then, if you have less than 20 ☆ (Street Cred), discard 1.
+EP-003 | Minotaur | {Play} If you have more ☆ (Street Cred) than a Rival, defeat a rival Unit with power 5 or less.
+EP-012 | Goro Takemura: Hands Unclean | {Go Solo} (Pay this Legend's cost to play it as a ready Unit. It can attack this turn. If it leaves the field, remove it from the game.) {Blocker} (You may spend this Unit to redirect a rival Unit's attack to it instead.)
+EP-013 | Saburo Arasaka: Stubborn Patriarch | Friendly ARASAKA Units have +1 power while attacking. (Units steal an extra Gig for every 10 power.)
+EP-017 | Goro Takemura: Losing His Way | {Attack} If all friendly Legends are face-up, this Unit has +5 power this turn.
+HEIST-001 | Viktor Vektor: Sit Down and Relax | {Call} Search the top 5 cards of your deck. Reveal up to 2 Gears with cost 2 or less and add them to your hand. Bottom-deck the rest in a random order.
+HEIST-002 | Dexter DeShawn: One Last Chance | {Play} {Attack} Adjust a Gig by up to 1. {Defeated} If your ☆ (Street Cred) differs from a Rival's by 10+, draw 2.
+HEIST-011 | Jackie Welles: Pour One Out For Me | The first time you play a Blue Unit or Blue Gear each turn, you may decrease a friendly Gig by up to 2. If it becomes a min Gig, draw 1.
+HEIST-012 | V: Corporate Exile | {Go Solo} (Pay this Legend's cost to play it as a ready Unit. It can attack this turn. When it leaves the field, remove it from the game.)
+HEIST-015 | MT0D12 Flathead | If you have less ☆ (Street Cred) than a Rival, this Unit can't be blocked.
+PRM01-005 | Rebecca: Having a Moment | 
+WNTC-001 | Adam Smasher: Ender of Legends | {Go Solo} (Pay this Legend's cost to play it as a ready Unit. It can attack this turn. If it leaves the field, remove it from the game.) {Play} Defeat a rival Unit.
+WNTC-002 | Dexter DeShawn: Off the Grid | {Call} Choose one effect. Give a friendly Unit +2 power this turn. // Draw 1. {Spend}: Increase a Gig by up to 2.
+WNTC-003 | Johnny Silverhand: Rocking Renegade | 2 €$, {Spend} A friendly Unit can attack spent rival Units the turn it's played. If it's a ROCKER Unit, also give it +2 power this turn. This effect costs -1 €$ for each friendly Gig with 8+ value.
+WNTC-004 | Royce: Psycho on the Edge | {Go Solo} (Pay this Legend's cost to play it as a ready Unit. It can attack this turn. If it leaves the field, remove it from the game.) During your turn, this Legend has +2 power for each of its equipped Gear.
+WNTC-005a | V: Streetkid | {Call} Trash 3. Then, add 1 BRAINDANCE Program from your trash to your hand. {Go Solo} (Pay this Legend's cost to play it as a ready Unit. It can attack this turn. If it leaves the field, remove it from the game.)
+WNTC-006 | 6th Street Recruits | When a friendly Unit steals a d6, increase a Gig by up to 6.
+WNTC-007 | Animals Wrecker | [Flavour Text] Takes a lot of juice to break bones like they do.
+WNTC-008 | Chrome Fang | {Play} Until your next turn, rival Units can't steal friendly Gigs with value higher than their power.
+WNTC-009 | El Sombrerón: La Venganza Lenta | {Attack} You may pay 2 €$. If you do, this Unit gains power equal to a friendly max Gig this turn.
+WNTC-010 | Japantown Jonin | {Play} Give a friendly Unit +2 power this turn. (Units with power 0 don't steal Gigs.)
+WNTC-011 | Johnny Silverhand: Never Stop Fighting | The first time this Unit wins a fight each turn, ready it. This Unit wins all fights against CORPO Units.
+WNTC-012 | Kerry Eurodyne: The Last Rockerboy | {Spend} If you control a Gig with 8+ value, draw 2.
+WNTC-013 | La Llorona: Ghost of the Past | {Blocker} (You may spend this Unit to redirect a rival Unit's attack to it instead.) When this Unit uses {Blocker}, increase a Gig by up to 3.
+WNTC-014 | Meredith Stout: Stone Cold Corpo | {Blocker} This Unit has +2 power while fighting a Legend. When a Rival adjusts or swaps 1 or more friendly Gigs, you may add a card from your trash to your hand.
+WNTC-015 | Octant | Play this Unit for -1 €$ for each friendly Gig with 8+ value, to a minimum of 1 €$.
+WNTC-016 | Royce: Don't Call Me Simon | {Play} Defeat a rival Unit with power 2 or less. If you have more ☆ (Street Cred) than a Rival, defeat a rival Unit with power 3 or less instead.
+WNTC-017 | Ruthless Lowlife | This Unit can only attack rival Units. (It can't attack Gig areas.)
+WNTC-018 | Screw: Lovelorn Fool | {Defeated} Add another Unit from your trash to your hand.
+WNTC-019 | Swordwise Huscle | {Attack} If this Unit has power 5+, draw 1.
+WNTC-020 | V: Roamer of the Badlands | When this Unit steals a Gig, increase it by up to 5. At the end of your turn, if you control 2 or more Gigs with 8+ value, draw 1.
+WNTC-021 | Valentino Guerrera | If you have more ☆ (Street Cred) than a Rival, this Unit can attack ready Units with {Blocker}.
+WNTC-022 | Yorinobu Arasaka: Steel Dragon | {Play} You may play a Unit with cost 4 or less from your hand or trash for free. It can attack rival Units this turn. The first time an ARASAKA Unit is defeated each turn, draw 1.
+WNTC-023 | Arasaka Emergency Radioport | (Equip to a friendly Unit or face-up Legend.) When this Unit or Legend is spent, you may look at a friendly face-down Legend. If that Legend is ARASAKA or has {Go Solo}, you may Call it for free. (You may only Call a Legend once per turn.)
+WNTC-024 | Deadman Transmitter | (Equip to a friendly Unit or face-up Legend.) If this Unit would be defeated, defeat its "DEADMAN TRANSMITTER" instead.
+WNTC-025 | Mantis Blades | (Equip to a friendly Unit or face-up Legend.) "One cut, one kill."
+WNTC-026 | Satori: Sword of Saburo | (Equip to a friendly Unit or face-up Legend.) When this Unit wins a fight against a rival Unit, draw 1.
+WNTC-027 | All is Lost | Trash 3. Add a Unit from among them to your hand.
+WNTC-028 | Appetite for Destruction | The next time a friendly Unit wins a fight by 3+ power this turn, it also steals a Gig.
+WNTC-029 | Bonnie and Clyde | Defeat a rival Unit with power 4 or less. You may defeat 2 instead if a Rival controls at least 2 Gigs more than you.
+WNTC-030 | Carnage at the Colosseum | Play this Program for -1 €$ for each friendly Gig with 8+ value, to a minimum of 1 €$. Defeat a rival Unit with less power than a friendly Unit.
+WNTC-031 | Detonate | {Quick} Defeat a rival Gear with power 2 or less.
+WNTC-032 | Gunpoint Diplomacy | Give a friendly Unit these effects. If you have less ☆ (Street Cred) than a Rival, they instead choose one effect for you. The next time this Unit attacks this turn, it may attack ready Units. // Give this Unit +3 power this turn.
+WNTC-033 | Industrial Assembly | Increase a Gig by up to 4. If you control a Gig with 8+ value, draw 1.
+WNTC-034 | Over the Edge | Defeat a Unit with power equal to or less than the value of a friendly d20.
+WNTC-035 | Shattered Memories | Each player discards their hand and may draw 5. If the total number of discarded cards equals the value of a friendly Gig, draw 2.
+WNTC-036 | Dum Dum: Maelstrom Triggerman | {Call} You may defeat a friendly Gear. If you do, draw 2. Otherwise, draw 1. {Quick} 1 €$, {Spend} Give a friendly Unit +1 power this turn for each of its equipped Gear.
+WNTC-037 | Kerry Eurodyne: Axe, Attitude, Audience | When you roll in a Gig from your fixer area, you may ignore the result and reroll it once. When you roll a min or max value on a Gig, draw 1. If it's a d20, draw 3 instead.
+WNTC-038 | Muamar Reyes: El Capitán | {Call} Choose one effect. A friendly Unit can't be defeated in a fight this turn. // Draw 1. {Spend} Adjust a Gig by 1.
+WNTC-039 | River Ward: Detective on the Hunt | {Quick} {Spend} Play a Gear with cost 2 or less from your hand for free. When a friendly equipped Unit is defeated, search the top 2 cards of your deck and trash 1.
+WNTC-040 | Rogue Amendiares: Preem Solo | {Go Solo} (Pay this Legend's cost to play it as a ready Unit. It can attack this turn. If it leaves the field, remove it from the game.) When a friendly Legend steals a Gig, if its value is even, draw 1. If its value is odd, a Rival discards 1.
+WNTC-041 | Adam Smasher: Metal Over Meat | {Play} Defeat all other Units.
+WNTC-042 | Alt Cunningham: Mother of Daemons | When a friendly equipped Unit or Legend is spent, draw 1. When a rival Unit would steal a Gig, you may discard 1 with cost equal to that Gig's value. If you do, the Gig isn't stolen.
+WNTC-043 | Augmented Negotiators | {Blocker} (You may spend this Unit to redirect a rival Unit's attack to it instead.) When this Unit uses {Blocker}, a Rival discards 1.
+WNTC-044 | Caliber: Totentanz's Top Dog | {Play} Defeat a rival Unit with cost 2 or less. {Defeated} A Rival discards 1. If the card's cost equals the value of a friendly Gig, that Rival discards 1 more.
+WNTC-045 | Gilded Matón | {Play} You may defeat a friendly Gear. If you do, defeat a rival Unit with cost 3 or less.
+WNTC-046 | Hanako Arasaka: In a Gilded Cage | {Play} Search the top 4 cards of your deck. Reveal any number of cards with cost equal to any friendly Gig values and add them to your hand. Bottom-deck the rest.
+WNTC-047 | Heywood Ripperdoc | {Play} You may defeat a Gear. If its cost equals the value of a friendly Gig, draw 1.
+WNTC-048 | Jackie Welles: Ride or Die Choom | {Attack} Give this Unit +2 power this turn for each friendly Gig with an even value. {Defeated} Draw 1 for each friendly Gig with an odd value.
+WNTC-049 | Maelstrom Goons | When this Unit steals a Gig, if it's equipped, a Rival discards 1.
+WNTC-050 | MaxTac Suppression Team | Rival Units can't attack the turn they're played.
+WNTC-051 | Offduty Malfini | {Play} Spend this Unit and a rival Unit.
+WNTC-052 | Rockn' Rockerboy | [Flavor] Scream your throat raw for something. Anything.
+WNTC-053 | Secondhand Bombus | {Blocker} (You may spend this Unit to redirect a rival Unit's attack to it instead.) (Units with power 0 don't steal Gigs.)
+WNTC-054 | Sketchy Ripper | {Attack} Search the top 3 cards of your deck. Reveal a Gear and add it to your hand. Bottom-deck the rest. (Units with power 0 don't steal Gigs.)
+WNTC-055 | T-Bug: Amateur Philosopher | {Defeated} Look at all friendly face-down Legends. Then, you may Call a Legend for free. (You can only Call a Legend once per turn.)
+WNTC-056 | Trauma Team Operatives | Play this Unit for -1 €$ for each Unit in your trash, to a minimum of 1 €$.
+WNTC-057 | Viktor Vektor: Drop Your Illusions | Play your first CYBERWARE Gear each turn for -3 €$, to a minimum of 1 €$.
+WNTC-058 | Viktor Vektor: You Might Feel a Little Pinch | {Play} Play a CYBERWARE Gear with cost 2 or less from your trash for free. Equip it only to another friendly Unit.
+WNTC-059 | Adrenaline Converter | (Equip to a friendly Unit or face-up Legend.) If a Rival controls at least 2 more Gigs than you, this Unit has {Adrenaline}. (This Unit can attack the turn it's played.)
+WNTC-060 | Gorilla Arms | (Equip to a friendly Unit or face-up Legend.) The first time this Unit steals 1 or more Gigs each turn, steal a rival Gig with a value not shared by a friendly Gig.
+WNTC-061 | Kiroshi Optics | (Equip to a friendly Unit or face-up Legend.) {Attack} Look at a friendly face-down Legend. (Don't reveal it.)
+WNTC-062 | Mandibular Upgrade | (Equip to a friendly Unit or face-up Legend.) {Blocker} (You may spend this Unit to redirect a rival Unit's attack to it instead.)
+WNTC-063 | The Relic: Experimental Biochip | {Defeated} Play another Unit with cost 9 or less from your trash for free. Then, bottom-deck this Unit.
+WNTC-064 | Zetatech Faceplate | (Equip to a friendly Unit or face-up Legend.) When this Unit or Legend is spent, adjust a Gig by up to 1. Then, if you control 3 or more Gigs with different values, draw 1.
+WNTC-065 | Afterparty at Lizzie's | Adjust a Gig by up to 1. If you control 2 or more Gigs with different values, draw 1.
+WNTC-066 | Bootleg Black Sapphire Show | Sell the top card of your deck. If you control a Gig with an even value and a Gig with an odd value, draw 2.
+WNTC-067 | Cyberpsychosis | {Quick} Give an equipped Unit +3 power this turn for each of its equipped Gears. If that Unit steals or fights, defeat it at the end of this turn.
+WNTC-068 | Live with the Aftermath | Each player defeats one of their Units.
+WNTC-069 | Safety Override | {Quick} The next time a friendly Unit loses a fight this turn, defeat the opposing rival Unit.
+WNTC-070 | The Heist | Trash 4. Add a Gear from among them to your hand. If that Gear's cost equals the value of a friendly Gig, you may play it for free instead.
+WNTC-071 | Goro Takemura: Vengeful Bodyguard | {Quick} 1 €$, {Spend} Give a friendly Unit with cost 4 or less {Blocker} this turn. If you control a value-pair of Gigs, also give it +1 power this turn. When a friendly Unit uses {Blocker}, you may discard 1. If you do, draw 1.
+WNTC-072 | Hanako Arasaka: Daughter of the Emperor | {Spend} Swap a friendly Gig with a rival Gig. At the start of your turn, draw 1 for each friendly value-pair of Gigs.
+WNTC-073 | Jackie Welles: Mama's Favorite | {Go Solo} (Pay this Legend's cost to play it as a ready Unit. It can attack this turn. If it leaves the field, remove it from the game.) If a friendly Unit would be defeated, you may spend 1 €$ to defeat this Legend instead. (Remove it from the game.)
+WNTC-074 | Padre: Man of the Cross | {Call} Choose one effect. Spend a rival Unit. // Draw 1. {Spend} Set a player's Gig to the same value as another player's Gig.
+WNTC-075 | Panam Palmer: Nomad Cavalry | 2 €$, {Spend} Move a Gear from this Legend to an unequipped friendly Unit. If you do, ready that Unit. At the end of your turn, if 5 or more friendly Units and/or Legends are equipped, ready them.
+WNTC-076 | Corpo Security | This Unit can't attack. {Blocker} (You may spend this Unit to redirect a rival Unit's attack to it instead.)
+WNTC-077 | Emergency Atlus | "Grab the policyholder, leave the rest for the city meatwagon."
+WNTC-078 | Field Operator | {Play} If your ☆ (Street Cred) is an even number, draw 1.
+WNTC-079 | Maelstrom Zealots | When this Unit loses a fight, defeat the opposing rival Unit. (Units with power 0 don't steal Gigs.)
+WNTC-080 | MaxTac AV | {Play} You may swap a friendly Gig with a rival Gig.
+WNTC-081 | MaxTac Heavy | Play this Unit for -1 €$ for each of a Rival’s Units, to a minimum of 1 €$.
+WNTC-082 | MaxTac Squadron | At the end of your turn, if this Unit is spent, ready a friendly face-up Legend.
+WNTC-083 | Nadia: Fighting Through Grief | If a Rival controls more Gigs than you, this Unit can attack their Gig area the turn it's played.
+WNTC-084 | Pacifica Netrunner | {Play} If your ☆ (Street Cred) is an even number, a rival Unit can't ready until your next turn.
+WNTC-085 | Panam Palmer: Strength Through Family | During your turn, you may Call a Legend for free. {Attack} Discard 1. If you do, draw 1 for each friendly face-up Legend.
+WNTC-086 | Pepe Najarro: Working Doubles | {Attack} If you control a value-pair of Gigs, ready up to 2 MERC Legends in your Legends area.
+WNTC-087 | Riding Nomad | {Adrenaline} (This Unit can attack the turn it's played.)
+WNTC-088 | Sandayu Oda: Hanako's Guardian | {Play} Spend a rival Unit for each friendly value-pair of Gigs. This Unit can attack rival Units the turn it's played.
+WNTC-089 | Saul Bright: Stormrider | Other friendly Units have +2 power while attacking. At the end of your turn, ready up to 3 friendly Units.
+WNTC-090 | Tyger's Whisper | {Play} You may Call a Legend for free. (You can only Call a Legend once per turn.) (Units with power 0 don't steal Gigs.)
+WNTC-091 | Valentino Street Racer | {Play} Give another friendly Unit with cost 5 or less {Adrenaline} this turn. (A Unit with Adrenaline can attack the turn it's played.)
+WNTC-092 | Wraith Marauders | When this Unit steals a Gig, ready another friendly Unit with power equal to the Gig's value.
+WNTC-093 | Overwatch: Panam's Gift | {Quick} 1 €$, {Spend} Discard 1. Defeat a spent rival Unit with cost equal to or less than the discarded card's cost.
+WNTC-094 | Riot Shield | (Equip to a friendly Unit or face-up Legend.) {Blocker} (You may spend this Unit to redirect a rival Unit's attack to it instead.) Rivals must pay +2 €$ to use {Go Solo}.
+WNTC-095 | Sandevistan | (Equip to a friendly Unit or face-up Legend.) At the end of your turn, ready this Unit or Legend.
+WNTC-096 | Zetatech Berserk | Play this Gear for -1 €$ for each friendly face-up Legend, to a minimum of 1 €$.
+WNTC-097 | Corporate Surveillance | Spend a rival Unit with cost 4 or less.
+WNTC-098 | (Don't Fear) The Reaper | Spend all rival Units. Then, defeat a spent Unit.
+WNTC-099 | Fool on the Hill | Reveal the top 2 cards of your deck. A Rival chooses whether you add them to your hand or trash them. If you trash them, draw 2.
+WNTC-100 | Memory Relapse | Spend a rival Unit. It can't ready until your next turn. If your ☆ (Street Cred) is an even number, draw 1.
+WNTC-101 | Peace Offering | You may set a Gig's value to the value of another Gig. Then, if you control a value-pair, draw 1.
+WNTC-102 | Synapse Burnout | {Quick} A friendly Unit has +1 power for each friendly face-up Legend while fighting rival Units this turn.
+WNTC-103 | Take Control | {Quick} A rival Unit steals 1 fewer Gig this turn. If that Unit is an AI, DRONE, or VEHICLE, draw 1.
+WNTC-104 | We Gotta Live Together | If a Rival controls at least 2 more Gigs than you, play this Program for 3 €$. Play up to 2 Units with cost 3 or less from your trash for free.
+WNTC-105 | Wild in the Streets | Defeat a spent Unit.
+WNTC-106 | Alt Cunningham: Soulkiller Architect | 1 €$, {Spend} Play a Program from your trash. Bottom-deck it after you play it. (You still pay its cost.)
+WNTC-107 | Evelyn Parker: Beautiful Enigma | When a friendly CORPO or GANGER Unit steals 1 or more Gigs, ready 1 Eddie. 1 €$, {Spend} A rival Unit must attack next turn if it can.
+WNTC-108 | Judy Álvarez: Braindance Maestro | When you play a BRAINDANCE Program, give a friendly Unit +1 power this turn. {Spend} Trash the top card of your deck. If it's a Program, you may add it to your hand.
+WNTC-109 | Sasha Yakovleva: Won't Let You Down | {Go Solo} {Attack} Reveal the top card of your deck and add it to your hand. This Unit gains power equal to that card's cost this turn. {Defeated} A Rival discards 1.
+WNTC-110 | Wakako Okada: Peace and Harmony | {Call} Choose one effect. Give a rival Unit -2 power this turn. // Draw 1. {Spend}: Decrease a Gig by up to 2.
+WNTC-111 | Delamain: Rideshare AI | {Play} Draw 2. (Units with power 0 don't steal Gigs.)
+WNTC-112 | Delamain Cab | At the end of your turn, if this Unit stole a Gig this turn, ready 1 Eddie.
+WNTC-113 | Evelyn Parker: Scheming Siren | {Attack} Draw 1. Then, if you have more ☆ (Street Cred) than a Rival, discard 1. (Units with power 0 don't steal Gigs.)
+WNTC-114 | Hacked Corpo | {Play} Trash 3. Add a Program from among them to your hand.
+WNTC-115 | Jacked-In Voodoo Boy | This Unit can't attack unless you played a Program this turn.
+WNTC-116 | Judy Álvarez: Nothing to Doubt | 1 €$, {Spend} Reveal the top card of your deck. You may play it for free. Otherwise, add it to your hand.
+WNTC-117 | Lizzy Wizzy: Delicate Weapon | {Play} You may play a Program with cost 3 or less from your hand or trash for free. Bottom-deck it after you play it. {Blocker}
+WNTC-118 | Maman Brigitte: Spirit of Death | {Play} You may discard 2 Programs. If you do, bottom-deck a rival unequipped Unit.
+WNTC-119 | Misty Olszewski: Mender of Broken Spirits | This Unit can't attack. At the end of your turn, choose a card type. Then, reveal the top card of your deck. If it's the chosen type, add it to your hand and ready 1 Eddie. Otherwise, trash it. (Card types include Unit, Gear, and Program.)
+WNTC-120 | Modded Kusanagi | {Adrenaline} (This Unit can attack the turn it's played.) At the end of your turn, return this Unit to its owner's hand.
+WNTC-121 | Modded Muramasa | At the end of your turn, if you have less ☆ (Street Cred) than a Rival, ready this Unit.
+WNTC-122 | Mox Inciters | {Play} A rival Unit must attack next turn if it can. {Blocker} (You may spend this Unit to redirect a rival Unit's attack to it instead.)
+WNTC-123 | Placide: Voodoo Sentinel | {Play} {Attack} You may discard 1 Program. If you do, bottom-deck a rival Unit.
+WNTC-124 | Psycho Squad | [Flavour] Their protocol stops at “shoot first.”
+WNTC-125 | Rita Wheeler: No Stupid Questions | {Blocker} (You may spend this Unit to redirect a rival Unit's attack to it instead.) The first time this Unit is spent each turn, draw 1, then discard 1.
+WNTC-126 | Rogue Amendiares: Queen of the Afterlife | The first time another friendly Unit steals a Gig with value less than its power each turn, ready 2 Eddies. {Quick} 2 €$,  {Spend} A rival Unit loses power equal to this Unit's power this turn.
+WNTC-127 | Westbrook Netrunner | {Play} Until your next turn, rival Legends can't steal friendly Gigs with value less than their power.
+WNTC-128 | Dying Night: V's Pistol | (Equip to a friendly Unit or face-up Legend.) {Attack} Decrease a Gig by up to 2. At the end of your turn, if this Unit is named "V", ready 2 Eddies.
+WNTC-129 | NetWatch Netdriver | (Equip to a friendly Unit or face-up Legend.) When this Unit or Legend is spent, draw 1.
+WNTC-130 | Tetratronic Rippler | (Equip to a friendly Unit or face-up Legend.) When this Unit or Legend is spent, search the top card of your deck. You may trash it. (Otherwise, keep it on the top of your deck.)
+WNTC-131 | Chrome Reverie | A rival Unit can't attack until your next turn. If you control a min Gig, you may Call a Legend for free. (You can only Call a Legend once per turn.)
+WNTC-132 | Floor It | {Quick} Give a rival Unit -1 power this turn. Draw 1.
+WNTC-133 | Les Élémens | Bottom-deck a Rival's lowest-power Unit. (If there are multiple, choose 1.)
+WNTC-134 | Nocturne OP55 N1 | If your fixer area is empty, play this Program for 1 €$. Choose one effect. Draw 2. // A Unit can't attack until your next turn. // A friendly Legend may use {Go Solo} for -2 €$ this turn, to a minimum of 1 €$.
+WNTC-135 | Pyramid Song | Choose one effect. If a friendly d4 is a min Gig, choose both instead. Give a rival Unit -5 power this turn. // Bottom-deck a rival Unit with power 0.
+WNTC-136 | Reboot Optics | {Quick} The next time a rival Unit fights this turn, it doesn't defeat the opposing friendly Unit.
+WNTC-137 | Three Mouths, One Desire | Search the top 3 cards of your deck. Add 1 to your hand. You may add 1 more for each friendly min Gig. Bottom-deck the rest.
+WNTC-138 | Towerfall | Choose one effect. If you have less ☆ (Street Cred) than a Rival, choose both instead. Give all rival Units -5 power this turn. // Bottom-deck all rival Units with power 0.
+WNTC-139 | Trust No One | Decrease a Gig by up to 3. Then, if you control a min Gig, draw 1.
+WNTC-140 | Unlikely Bond | Bottom-deck a ready friendly Unit. If you do, bottom-deck a spent rival Unit.

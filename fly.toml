@@ -1,0 +1,34 @@
+app = 'cyber-sim-sdk'
+primary_region = 'arn'
+
+auto_stop_machines = false
+auto_start_machines = true
+min_machines_running = 1
+
+[build]
+
+[deploy]
+  strategy = "immediate"
+
+[[services]]
+  internal_port = 8080
+  protocol = "tcp"
+
+  [services.concurrency]
+    type = 'requests'
+    hard_limit = 250
+    soft_limit = 200
+
+  [[services.http_checks]]
+    interval     = '30s'
+    timeout      = '5s'
+    grace_period = '10s'
+    method       = 'get'
+    path         = '/api/status'
+    protocol     = 'http'
+
+[[vm]]
+  size = 'shared-cpu-1x'
+  memory = '512mb'
+  cpu_kind = 'shared'
+  cpus = 1
