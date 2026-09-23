@@ -1,0 +1,2372 @@
+{
+  "version": "0.0.11",
+  "_comment": "Machine-readable manifest.",
+  "generated_from": [
+    "engine/lib/effects.js",
+    "engine/lib/eval.js",
+    "engine/lib/events.js",
+    "engine/lib/filters.js",
+    "engine/lib/primitives.js",
+    "engine/lib/select.js",
+    "engine/lib/cost.js",
+    "engine/data/choice-types.json",
+    "engine/data/card_scripts.json"
+  ],
+  "_drift_guard": "server/test/cards/_spec_drift.test.js asserts the actions / conditions / expression_ops / filter_spec / trigger_events here match the engine source. If you add an engine primitive, update this file or that test fails.",
+  "card_script_schema": {
+    "_comment": "Top-level shape of a card_scripts.json entry. All fields except card_id are optional.",
+    "card_id": {
+      "type": "string",
+      "required": true,
+      "notes": "matches an entry in cards.json"
+    },
+    "statics": {
+      "type": "Static[]",
+      "notes": "continuous modifiers — keywords, power, auras"
+    },
+    "onPlay": {
+      "type": "Effect[]",
+      "notes": "fires on the OnPlay event for this card"
+    },
+    "onCall": {
+      "type": "Effect[]",
+      "notes": "fires on the OnCall event (legend mechanic)"
+    },
+    "onFlip": {
+      "type": "Effect[]",
+      "notes": "fires on the OnFlip event (legend flip)"
+    },
+    "onDefeated": {
+      "type": "Effect[]",
+      "notes": "fires on the OnDefeated event for this card"
+    },
+    "abilities": {
+      "type": "Ability[]",
+      "notes": "triggered or spend_activated abilities listening to other events"
+    },
+    "playCostModifier": {
+      "type": "object",
+      "shape": {
+        "condition": "ConditionSpec",
+        "discount": "Expr",
+        "min": "number"
+      },
+      "notes": "Reduces this card's own play cost. cost.js effectivePlayCost evaluates `discount` (clamped at 0) and floors the result at `min` (default 1). Optional `condition` gates the WHOLE modifier — when it evaluates false the card costs its printed price, with neither the discount nor the floor applied (We Gotta Live Together: 3 €$ only while a Rival controls 2+ more Gigs). Pure — read wherever a cost is quoted, not just at play-commit. Distinct from the DiscountNextPlay action, which is a one-shot board-level discount on the NEXT matching play."
+    },
+    "quick": {
+      "type": "boolean",
+      "notes": "marks a Program as {Quick} — castable as a reaction during a unit's attack (both the attacker_interrupt and defensive windows), paid at its NORMAL cost out of ready eddies/legends. Engine path: combat.js attWaiting/defWaiting surface eligible hand cards as `interrupt_castable_iids`; player responds with step `play_card_interrupt_cast` (iid only — no extra unit spend). Same `onPlay` runs whether played normally or quick; any legend tapped for the cost fires OnSpent first. (Distinct from the ability-level `quick` flag, which marks a spend_activated ability as a defender reaction.)"
+    }
+  },
+  "ability_spec": {
+    "_comment": "Shape of one entry inside the `abilities` array.",
+    "kind": {
+      "type": "enum",
+      "values": [
+        "triggered",
+        "spend_activated"
+      ],
+      "required": true
+    },
+    "trigger": {
+      "type": "TriggerSpec",
+      "required": true
+    },
+    "quick": {
+      "type": "boolean",
+      "notes": "spend_activated only ({Quick}). The ability keeps its normal window AND is additionally offered to the DEFENDER as a reaction during a rival unit's attack (the OnCardAttacks window). Paid out of turn at its normal cost. Attacker is not offered it (not reacting to a rival). Resolves in the defensive step, before fight/steal."
+    },
+    "condition": {
+      "type": "ConditionSpec",
+      "notes": "gates the trigger after match (eval.js evalCondition)"
+    },
+    "cost": {
+      "type": "object",
+      "shape": {
+        "spend": "TargetSpec",
+        "eddies": "number"
+      },
+      "notes": "spend_activated only. `spend.from_self` taps the source; `eddies` pays N €$ from ready eddies/legends (excluding the source). Each card spent to pay (source + any tapped legend) fires OnSpent. Affordability is checked before the ability is offered."
+    },
+    "prompt": {
+      "type": "string",
+      "notes": "shown to user when offering the optional spend"
+    },
+    "effect": {
+      "type": "Effect[]",
+      "required": true
+    }
+  },
+  "actions": [
+    {
+      "name": "Optional",
+      "category": "control",
+      "params": {
+        "body": {
+          "type": "Effect[]",
+          "required": true
+        },
+        "chooser": {
+          "type": "enum",
+          "values": [
+            "controller",
+            "opponent"
+          ]
+        },
+        "otherwise": {
+          "type": "Effect[]",
+          "notes": "runs on decline instead of nothing, when present"
+        },
+        "reveal_from": {
+          "type": "string",
+          "notes": "name of a prior reveal binding; its cards are attached as choice_needed.context.revealed_refs so both players see them (via the reveal banner) while the chooser decides"
+        },
+        "prompt": {
+          "type": "string"
+        }
+      },
+      "halts": true,
+      "halt_kind": "confirm_optional",
+      "notes": "Halts to ask yes/no (chooser: controller by default, or opponent). On accept, body is prepended to the queue. On decline, otherwise is prepended if present, else nothing happens. no_repush=true."
+    },
+    {
+      "name": "ChooseAmount",
+      "category": "control",
+      "params": {
+        "min": {
+          "type": "Expr",
+          "required": true
+        },
+        "max": {
+          "type": "Expr",
+          "required": true
+        },
+        "exclude_zero": {
+          "type": "boolean"
+        },
+        "chooser": {
+          "type": "enum",
+          "values": [
+            "controller",
+            "opponent"
+          ]
+        },
+        "bind_to": {
+          "type": "string",
+          "notes": "alias: bind"
+        },
+        "prompt": {
+          "type": "string"
+        }
+      },
+      "halts": true,
+      "halt_kind": "choose_amount",
+      "writes_binding": "bind_to (number)",
+      "notes": "Pure prompt; resume writes the chosen number into ctx.bindings[bind_to]. no_repush=true."
+    },
+    {
+      "name": "ChooseCardType",
+      "category": "control",
+      "params": {
+        "options": {
+          "type": "CardType[]",
+          "notes": "buttons offered; default [Unit, Gear, Program]"
+        },
+        "chooser": {
+          "type": "enum",
+          "values": [
+            "controller",
+            "opponent"
+          ]
+        },
+        "bind_to": {
+          "type": "string",
+          "notes": "alias: bind"
+        },
+        "prompt": {
+          "type": "string"
+        }
+      },
+      "halts": true,
+      "halt_kind": "choose_card_type",
+      "writes_binding": "bind_to (CardType string)",
+      "notes": "Prompts the chooser to pick a card type (Unit/Gear/Program); resume writes the chosen type STRING into ctx.bindings[bind_to]. Compare it via a type_eq filter referencing {op:'binding'} (Misty Olszewski). no_repush=true."
+    },
+    {
+      "name": "If",
+      "category": "control",
+      "params": {
+        "cond": {
+          "type": "ConditionSpec",
+          "required": true
+        },
+        "then": {
+          "type": "Effect[]"
+        },
+        "else": {
+          "type": "Effect[]"
+        }
+      },
+      "notes": "Evaluates cond; queues the chosen branch."
+    },
+    {
+      "name": "AddBadge",
+      "category": "control",
+      "params": {
+        "trigger": {
+          "type": "TriggerSpec",
+          "required": true,
+          "notes": "same shape as a triggered ability's trigger (event/by/card); by:'controller' means the owner's own unit"
+        },
+        "condition": {
+          "type": "ConditionSpec",
+          "notes": "extra gate evaluated against the event ctx, e.g. Compare event_field 'margin' >= 3"
+        },
+        "effect": {
+          "type": "Effect[]",
+          "required": true,
+          "notes": "runs when the badge fires, in a ctx whose self_pid is the badge owner"
+        }
+      },
+      "notes": "Registers a board-level delayed trigger ('the next time X this turn, do Y') onto b.badges. The event system scans badges as extra listeners; a matching one fires its effect once and is consumed. Each play adds its own instance (copies stack; both players may hold them). Turn-scoped — clearTransients wipes unfired badges at end of turn. self_iid is null inside the effect (no in-play source); use ctx.source_* for the triggering unit."
+    },
+    {
+      "name": "Draw",
+      "category": "card_flow",
+      "params": {
+        "n": {
+          "type": "Expr",
+          "default": 1
+        },
+        "side": {
+          "type": "enum",
+          "values": [
+            "self",
+            "opponent"
+          ],
+          "default": "self",
+          "notes": "whose deck to draw from; 'opponent' makes the RIVAL draw (Shattered Memories)"
+        }
+      },
+      "notes": "Draws n cards for the firing controller (ctx.self_pid)."
+    },
+    {
+      "name": "Discard",
+      "category": "card_flow",
+      "params": {
+        "n": {
+          "type": "Expr",
+          "default": 1,
+          "notes": "ignored when target is supplied"
+        },
+        "target": {
+          "type": "TargetSpec",
+          "notes": "if omitted, discards top n of own hand (random/auto)"
+        }
+      },
+      "halts": "if target requires a chooser",
+      "notes": "With target: discards the resolved card(s). Without: top-deck-style discard from hand."
+    },
+    {
+      "name": "Mill",
+      "category": "card_flow",
+      "params": {
+        "n": {
+          "type": "Expr",
+          "default": 1
+        },
+        "side": {
+          "type": "enum",
+          "values": [
+            "self",
+            "opponent"
+          ],
+          "default": "self"
+        },
+        "bind": {
+          "type": "string",
+          "notes": "if set, the milled refs are bound as an array — feeds 'from among them' picks via filter.in_binding (WNTC-027)"
+        }
+      },
+      "writes_binding": "bind (CardRef[])",
+      "notes": "Mills top n from the chosen player's deck."
+    },
+    {
+      "name": "SellTopCard",
+      "category": "card_flow",
+      "params": {},
+      "notes": "Sells the top card of the controller's deck: the ref moves to the eddies zone as a ready eddie. Ignores the eddie tag and does NOT touch sold_card_this_turn — an effect sell is allowed on top of the once-per-turn hand sell. Empty deck is a silent no-op."
+    },
+    {
+      "name": "RecoverFromTrash",
+      "category": "card_flow",
+      "params": {
+        "target": {
+          "type": "TargetSpec",
+          "required": true,
+          "notes": "zone='trash'"
+        }
+      },
+      "halts": "yes if chooser=controller",
+      "notes": "Moves the chosen trash card back to the owner's hand."
+    },
+    {
+      "name": "SelectTarget",
+      "category": "card_flow",
+      "params": {
+        "target": {
+          "type": "TargetSpec",
+          "required": true
+        }
+      },
+      "halts": "yes if chooser=controller",
+      "writes_binding": "target.bind",
+      "notes": "Pure target-pick that only writes the binding; no other side effect. Used to pre-bind a Gig before SearchTopN, etc."
+    },
+    {
+      "name": "SearchTopN",
+      "category": "card_flow",
+      "params": {
+        "n": {
+          "type": "Expr",
+          "required": true
+        },
+        "take_up_to": {
+          "type": "Expr",
+          "required": true
+        },
+        "filter": {
+          "type": "FilterSpec",
+          "notes": "applied to the top-n pool"
+        },
+        "trash_remainder": {
+          "type": "boolean",
+          "default": false,
+          "notes": "false=bottom-deck-random the unselected; true=trash them"
+        },
+        "auto_take_all": {
+          "type": "boolean",
+          "default": false,
+          "notes": "skip the choice halt and take every filter-matching ref. Legacy path; prefer RevealTop + TakeFromBound for new cards."
+        },
+        "prompt": {
+          "type": "string"
+        }
+      },
+      "halts": "yes unless auto_take_all is true and at least one match exists",
+      "halt_kind": "choose_from_top_n",
+      "notes": "MEGA-ACTION. Splices top n off deck before halt. Resume picks: kept→hand, rest→deck-bottom-random or trash. no_repush=true. Records to b._reveals."
+    },
+    {
+      "name": "RevealTop",
+      "category": "card_flow",
+      "params": {
+        "n": {
+          "type": "Expr",
+          "required": true
+        },
+        "bind": {
+          "type": "string",
+          "required": true,
+          "notes": "binding name the array of revealed refs is stored under"
+        }
+      },
+      "halts": false,
+      "writes_binding": "bind",
+      "notes": "Peeks the top n of own deck and binds the refs to a name for a later effect (typically TakeFromBound). Does NOT push to b._reveals — that's the resolver's job, so the log line reports both 'revealed' and 'picked' in one row."
+    },
+    {
+      "name": "AckReveal",
+      "category": "card_flow",
+      "params": {
+        "from": {
+          "type": "string",
+          "required": true,
+          "notes": "binding holding the revealed ref(s) — a single ref or an array (e.g. from RevealTop)"
+        },
+        "prompt": {
+          "type": "string"
+        }
+      },
+      "halts": true,
+      "halt_kind": "acknowledge_reveal",
+      "notes": "Halts to SHOW the already-bound revealed card(s) to the controller with an OK button (an acknowledgement, not a pick). No state change on resume; routing runs in the following effects. No-op (continues) if the binding is empty (e.g. empty deck). Use after RevealTop when the player must actually see the card, not just read a log line (Misty Olszewski)."
+    },
+    {
+      "name": "TakeFromBound",
+      "category": "card_flow",
+      "params": {
+        "from": {
+          "type": "string",
+          "required": true,
+          "notes": "name of a previously-bound array (e.g. from RevealTop)"
+        },
+        "filter": {
+          "type": "FilterSpec",
+          "notes": "applied to the bound refs; matches go to hand (ignored when take_none is set)"
+        },
+        "take_none": {
+          "type": "boolean",
+          "default": false,
+          "notes": "true=keep nothing for hand; every bound ref goes to the remainder (trash/deck) regardless of filter"
+        },
+        "trash_remainder": {
+          "type": "boolean",
+          "default": false,
+          "notes": "false=bottom-deck-random the non-matches; true=trash them"
+        },
+        "to_top": {
+          "type": "boolean",
+          "notes": "return the un-taken remainder to the TOP of the deck in order instead of shuffling it to the bottom (Tetratronic Rippler)"
+        }
+      },
+      "halts": false,
+      "notes": "Divvies a previously-bound array into hand (matches) and trash/deck-bottom (non-matches). Pushes ONE entry to b._reveals with full revealed+picked sets. Clears the binding when done."
+    },
+    {
+      "name": "ScryTrash",
+      "category": "card_flow",
+      "params": {
+        "n": {
+          "type": "Expr",
+          "required": true,
+          "notes": "how many top cards to look at"
+        },
+        "trash_up_to": {
+          "type": "Expr",
+          "required": true,
+          "notes": "max the player may trash"
+        },
+        "min_take": {
+          "type": "Expr",
+          "default": 0,
+          "notes": "minimum the player MUST trash (capped by trash_up_to and eligible count); makes the trash mandatory (River Ward: trash 1)"
+        },
+        "filter": {
+          "type": "FilterSpec",
+          "notes": "which of the revealed cards may be trashed"
+        },
+        "prompt": {
+          "type": "string"
+        }
+      },
+      "halts": "yes unless nothing eligible / trash_up_to=0",
+      "halt_kind": "choose_from_top_n",
+      "notes": "Look at the top n of own deck; player trashes up to trash_up_to of them; the rest return to the TOP in original order (River Ward). Reuses choose_from_top_n with scry_trash=true — selected go to trash, not hand. no_repush=true."
+    },
+    {
+      "name": "RivalDiscards",
+      "category": "card_flow",
+      "params": {
+        "n": {
+          "type": "Expr",
+          "default": 1
+        },
+        "filter": {
+          "type": "FilterSpec",
+          "notes": "filters the rival's hand pool"
+        },
+        "bind": {
+          "type": "string",
+          "notes": "binds the LAST discarded card (used by Caliber)"
+        }
+      },
+      "halts": true,
+      "halt_kind": "choose_card_in_hand",
+      "halt_pid": "opponent",
+      "notes": "Two-phase: prompts opponent to pick a card from hand, then discards. If n>1, re-queues itself with n-1. Uses scratch binding _rd_pick internally."
+    },
+    {
+      "name": "IncreaseGig",
+      "category": "gig_mutation",
+      "params": {
+        "target": {
+          "type": "TargetSpec",
+          "required": true,
+          "notes": "type='Gig'"
+        },
+        "amount": {
+          "type": "Expr",
+          "required": true
+        }
+      },
+      "halts": "yes if chooser=controller",
+      "writes_binding": "target.bind (rebinds with new value + prev_value)",
+      "notes": "Shared handler. Increments gig value, capped at sides. Re-binds the target with the new gig state plus prev_value (value before the change) so downstream conditions can express 'became X' (Jackie BOX-005)."
+    },
+    {
+      "name": "DecreaseGig",
+      "category": "gig_mutation",
+      "params": {
+        "target": {
+          "type": "TargetSpec",
+          "required": true,
+          "notes": "type='Gig'"
+        },
+        "amount": {
+          "type": "Expr",
+          "required": true
+        }
+      },
+      "halts": "yes if chooser=controller",
+      "writes_binding": "target.bind",
+      "notes": "Shared handler. May fire OnGigValueChanged (rival-decreases path tracked via ctx._post_gig_decreased)."
+    },
+    {
+      "name": "AdjustGig",
+      "category": "gig_mutation",
+      "params": {
+        "target": {
+          "type": "TargetSpec",
+          "required": true,
+          "notes": "type='Gig'"
+        },
+        "amount": {
+          "type": "Expr",
+          "required": true,
+          "notes": "signed; negative decreases"
+        }
+      },
+      "halts": "yes if chooser=controller",
+      "writes_binding": "target.bind",
+      "notes": "Shared handler. Combines Increase/Decrease with a signed amount."
+    },
+    {
+      "name": "SetGigValue",
+      "category": "gig_mutation",
+      "params": {
+        "target": {
+          "type": "TargetSpec",
+          "required": true,
+          "notes": "type='Gig'; can be from_event:'stolen_gigs'"
+        },
+        "amount": {
+          "type": "Expr",
+          "required": true,
+          "notes": "absolute value to set"
+        }
+      },
+      "writes_binding": "target.bind",
+      "notes": "Shared handler. Sets exact value (used by Ruthless Lowlife: stolen gigs become 1)."
+    },
+    {
+      "name": "TransferGig",
+      "category": "gig_mutation",
+      "params": {
+        "target": {
+          "type": "TargetSpec",
+          "required": true,
+          "notes": "type='Gig'"
+        },
+        "to": {
+          "type": "enum",
+          "values": [
+            "controller",
+            "opponent"
+          ],
+          "default": "opponent"
+        }
+      },
+      "halts": "yes if chooser=controller",
+      "notes": "Steal a gig — moves it from its current owner to the named recipient (Gorilla Arms). A cross-player transfer fires OnStealGigs (source = the firing gear's host, else the firing card; source_pid = the recipient), so victim/thief listeners react. Cascade note: rate-limit any OnStealGigs trigger that itself transfers gigs."
+    },
+    {
+      "name": "SwapGig",
+      "category": "gig_mutation",
+      "params": {
+        "a": {
+          "type": "TargetSpec",
+          "required": true,
+          "notes": "type='Gig' — typically from_binding set by a prior SelectTarget"
+        },
+        "b": {
+          "type": "TargetSpec",
+          "required": true,
+          "notes": "type='Gig' on the opposite side of a"
+        }
+      },
+      "halts": "no",
+      "notes": "Exchange two gigs across sides (Hanako WNTC-072). A swap is an exchange, NOT a steal — no OnStealGigs. The non-acting side sees its row change: OnGigValueChanged fires for it with old_value = the value its row lost, new_value = the value it gained (Meredith's 'adjusts or swaps'). Equal-value swaps fire nothing. Gigs on the same side, or a==b: trace-and-skip."
+    },
+    {
+      "name": "RerollGig",
+      "category": "gig_mutation",
+      "params": {},
+      "halts": "no",
+      "notes": "Rerolls the OnGigRolled die in place (located via ctx.event_data.gig_iid/gig_pid). Uses a distinct RNG tag so the new value differs from the original roll, and syncs event_data.value so a later IsMinOrMax sees the post-reroll value. Only meaningful inside an OnGigRolled handler (Kerry's reroll, wrapped in Optional)."
+    },
+    {
+      "name": "Defeat",
+      "category": "field_mutation",
+      "params": {
+        "target": {
+          "type": "TargetSpec",
+          "required": true,
+          "notes": "type='Unit'; supports quantifier='all' for Adam Smasher"
+        }
+      },
+      "halts": "yes if chooser=controller",
+      "notes": "Defeats the resolved unit(s). Pushes to ctx._post_defeats, which drives a follow-up OnDefeated event."
+    },
+    {
+      "name": "DefeatGear",
+      "category": "field_mutation",
+      "params": {
+        "target": {
+          "type": "TargetSpec",
+          "required": true,
+          "notes": "type='Gear'"
+        }
+      },
+      "halts": "yes if chooser=controller",
+      "notes": "Defeats the resolved gear piece(s)."
+    },
+    {
+      "name": "ReturnToHand",
+      "category": "field_mutation",
+      "params": {
+        "target": {
+          "type": "TargetSpec",
+          "required": true,
+          "notes": "type='Unit'; supports filter.state='spent'"
+        }
+      },
+      "halts": "yes if chooser=controller",
+      "notes": "Returns the unit(s) to their owner's hand."
+    },
+    {
+      "name": "BottomDeckFromField",
+      "category": "field_mutation",
+      "params": {
+        "target": {
+          "type": "TargetSpec",
+          "required": true,
+          "notes": "type='Unit'; supports quantifier='all' (Towerfall)"
+        }
+      },
+      "halts": "yes if chooser=controller",
+      "notes": "Moves the resolved unit(s) from field to the bottom of their owner's deck (Placide, Les Élémens). Array-aware, so quantifier='all' bottom-decks every match."
+    },
+    {
+      "name": "RemoveFromGame",
+      "category": "field_mutation",
+      "params": {
+        "target": {
+          "type": "TargetSpec",
+          "required": true
+        }
+      },
+      "halts": "yes if chooser=controller",
+      "notes": "Sends the card to the removed-from-game zone; equipped gear goes with it. Currently unused by shipped scripts."
+    },
+    {
+      "name": "Spend",
+      "category": "state",
+      "params": {
+        "target": {
+          "type": "TargetSpec",
+          "required": true,
+          "notes": "type='Unit' or 'Legend'"
+        }
+      },
+      "halts": "yes if chooser=controller",
+      "notes": "Marks the resolved card spent."
+    },
+    {
+      "name": "Ready",
+      "category": "state",
+      "params": {
+        "target": {
+          "type": "TargetSpec",
+          "required": true
+        }
+      },
+      "halts": "yes if chooser=controller",
+      "notes": "Marks the resolved card(s) ready — units or legends; supports quantifier='all' to ready every match (Panam end-of-turn)."
+    },
+    {
+      "name": "SpendSelf",
+      "category": "state",
+      "params": {},
+      "notes": "Convenience: spend the firing card itself."
+    },
+    {
+      "name": "PayEddies",
+      "category": "state",
+      "params": {
+        "n": {
+          "type": "Expr",
+          "default": 1
+        },
+        "bind": {
+          "type": "string",
+          "notes": "set to true on success; read it with BindingSet to gate 'if you do' clauses"
+        }
+      },
+      "writes_binding": "bind (true on success)",
+      "notes": "Spends n €$ from the controller's ready eddies/legends mid-effect, firing OnSpent for each card spent. Unaffordable is a silent no-op (the binding stays unset) — gate the offer with the eddie_pool expr rather than relying on the failure. Used by replacement effects that charge a cost outside the normal ability-cost path (Jackie Welles — Mama's Favorite)."
+    },
+    {
+      "name": "PreventPendingSteal",
+      "category": "modifier",
+      "params": {},
+      "notes": "Cancels the single gig currently open in the OnWouldStealGig window. Only meaningful inside an OnWouldStealGig handler; a no-op anywhere else. Each chosen gig gets its own window, so cancelling one leaves the rest of a multi-gig steal intact (Alt Cunningham — Mother of Daemons)."
+    },
+    {
+      "name": "PreventPendingDefeat",
+      "category": "modifier",
+      "params": {},
+      "notes": "Cancels the defeat currently open in the OnWouldBeDefeated window by marking the top of b._pending_defeats. Only meaningful inside an OnWouldBeDefeated handler; a no-op anywhere else. The engine splits every defeat into _MaybeDefeat -> OnWouldBeDefeated -> _CommitDefeat, so this works for fight defeats, the Defeat action, and end-of-turn scheduled defeats alike."
+    },
+    {
+      "name": "ReadyEddie",
+      "category": "state",
+      "params": {
+        "n": {
+          "type": "Expr",
+          "default": 1
+        }
+      },
+      "notes": "Readies up to n of the controller's spent Eddies (Evelyn Parker). Eddies are fungible resources, so no target pick."
+    },
+    {
+      "name": "GrantTempPower",
+      "category": "modifier",
+      "params": {
+        "target": {
+          "type": "TargetSpec",
+          "required": true
+        },
+        "amount": {
+          "type": "Expr",
+          "required": true
+        },
+        "when": {
+          "type": "WhenSpec",
+          "notes": "gates the bonus per power read instead of applying it flat — e.g. when:{during_fight:true, vs_type:'Unit'} for 'while fighting rival Units' (Synapse Burnout). Stored in _temp_power_when and evaluated by applyStaticPower via _matchWhen."
+        }
+      },
+      "halts": "yes if chooser=controller",
+      "notes": "Adds amount to the target's _temp_power until cleanup. `amount` is evaluated once, at grant time; `when` is re-evaluated on every power read."
+    },
+    {
+      "name": "GrantTempKeyword",
+      "category": "modifier",
+      "params": {
+        "target": {
+          "type": "TargetSpec",
+          "required": true
+        },
+        "keyword": {
+          "type": "string",
+          "required": true,
+          "notes": "free-form; engine recognized: BLOCKER, CANNOT_ATTACK, CANNOT_READY, NO_HASTE, GO_SOLO, ADRENALINE, UNBLOCKABLE, HASTE_VS_SPENT, HASTE_VS_GIGS, ATTACK_READY_BLOCKERS, ATTACK_READY_UNITS (one-shot: consumed by the next attack declaration), FIGHT_IMMUNE (cannot be defeated in a fight; read at _FightInit), CANNOT_ATTACK_GIGS"
+        },
+        "until": {
+          "type": "string | object",
+          "notes": "'controller_next_turn' (expands to {pid: controller, turn: turn_number+2}) or an explicit {pid, turn}. Without it the keyword lands in _temp_keywords and is wiped at end of turn; WITH it the grant goes to _until_keywords, survives the untap sweep, and is cleared by clearExpiredUntilKeywords on that player's turn. Chrome Reverie, Pacifica Netrunner."
+        }
+      },
+      "halts": "yes if chooser=controller",
+      "notes": "Adds keyword to the target's _temp_keywords until cleanup."
+    },
+    {
+      "name": "ModifyStealCount",
+      "category": "modifier",
+      "params": {
+        "target": {
+          "type": "TargetSpec",
+          "required": true,
+          "notes": "type='Unit'"
+        },
+        "amount": {
+          "type": "Expr",
+          "required": true,
+          "notes": "signed; negative = steals fewer gigs"
+        }
+      },
+      "notes": "Adds amount to the target unit's _steal_mod; runSteal uses n = max(0, 1+floor(pw/10)+mod); cleared end of turn. Take Control: 'a rival Unit steals 1 fewer Gig this turn'."
+    },
+    {
+      "name": "PreventFightDefeat",
+      "category": "modifier",
+      "params": {},
+      "notes": "One-shot fight shield (Reboot Optics: 'the next time a rival Unit fights this turn, it doesn't defeat the opposing friendly Unit'). Sets b._fight_shield[controller]; the next unit-vs-unit fight consumes it and skips the defeat of the controller's unit (the rival's defeat still resolves; OnWinFight unaffected). Cleared at end of turn by clearTransients."
+    },
+    {
+      "name": "DiscountNextPlay",
+      "category": "modifier",
+      "params": {
+        "amount": {
+          "type": "Expr",
+          "required": true,
+          "notes": "€$ off the next matching play"
+        },
+        "filter": {
+          "type": "CardFilter",
+          "notes": "which card the discount applies to (e.g. {type:'Program'}); null = any"
+        },
+        "min": {
+          "type": "number",
+          "default": 1,
+          "notes": "floor for the discounted cost"
+        }
+      },
+      "notes": "Registers a one-shot board-level play discount (b._next_play_discount) consumed by the controller's next matching play this turn; cleared at end of turn. Applied by cost.js effectivePlayCost (pure) and consumed at play-commit — covers play_card, quick interrupt casts, and PlayFromZone with pay_cost (Alt Cunningham: next Program plays for -1 €$ per friendly min Gig)."
+    },
+    {
+      "name": "Equip",
+      "category": "equipment",
+      "params": {
+        "source": {
+          "type": "TargetSpec",
+          "required": true,
+          "notes": "the gear to equip; may have zone='hand' or equipped_to:{from_self:true}"
+        },
+        "dest": {
+          "type": "TargetSpec",
+          "required": true,
+          "notes": "the unit/legend to receive it"
+        }
+      },
+      "halts": "yes if either chooser=controller",
+      "notes": "Source uses TargetSpec instead of `target`. Removes gear from its current location (hand or current host) and equips to dest. Dest auto-binds 'host'."
+    },
+    {
+      "name": "ScheduleDefeat",
+      "category": "scheduling",
+      "params": {
+        "target": {
+          "type": "TargetSpec",
+          "required": true
+        },
+        "condition": {
+          "type": "ConditionSpec",
+          "notes": "optional; re-evaluated at end of turn against the scheduled unit (self = that unit). If it fails (or the unit is gone), the defeat is skipped. Used by Cyberpsychosis with SelfDidCombat."
+        }
+      },
+      "halts": "yes if chooser=controller",
+      "notes": "Schedules a defeat at end of turn (Reboot Optics, Cyberpsychosis). Drives endTurnCleanup. With `condition`, the defeat is conditional."
+    },
+    {
+      "name": "MarkPeeked",
+      "category": "misc",
+      "params": {
+        "target": {
+          "type": "TargetSpec",
+          "required": true,
+          "notes": "type='Legend', face='face_down'"
+        }
+      },
+      "halts": "yes if chooser=controller",
+      "notes": "Sets _peeked=true on the legend (Kiroshi Optics — look without revealing)."
+    },
+    {
+      "name": "CompelAttack",
+      "category": "misc",
+      "params": {
+        "target": {
+          "type": "TargetSpec",
+          "required": true,
+          "notes": "type='Unit', usually side='opponent'"
+        }
+      },
+      "halts": "yes if chooser=controller",
+      "notes": "Marks the target Unit (u._must_attack_on = next turn number) so it must attack on its controller's next turn if able (Evelyn Parker). endTurn refuses to end while a marked unit can still legally attack (canUnitAttack); declareAttack clears the marker; clearTransients clears it once that turn ends. mainWaiting surfaces compelled units as must_attack_iids."
+    },
+    {
+      "name": "PlayFromZone",
+      "category": "misc",
+      "params": {
+        "target": {
+          "type": "TargetSpec",
+          "required": true,
+          "notes": "the card to play; source zone defaults to 'trash'"
+        },
+        "to": {
+          "type": "enum",
+          "values": [
+            "trash",
+            "removed",
+            "field",
+            "deck"
+          ],
+          "default": "trash",
+          "notes": "where the card goes after it resolves; 'deck' = bottom of the controller's deck"
+        },
+        "pay_cost": {
+          "type": "boolean",
+          "default": false,
+          "notes": "if true, spend the card's EFFECTIVE cost (playCostModifier + any pending next-play discount) from the controller's ready eddies/legends first; if unaffordable the play is skipped"
+        }
+      },
+      "halts": "yes if chooser=controller",
+      "notes": "Plays the target card from its zone (Alt Cunningham): splices it out, optionally pays its cost, queues OnPlay + OnCardPlayed sub-events, then places it in `to`. Without pay_cost the play is free (old Alt). When to='field' and the card is a Unit it is instantiated as a real unit (state:'ready', entered_play_turn) and placed BEFORE its OnPlay fires, matching the normal play_card order (Yorinobu Arasaka — Steel Dragon)."
+    },
+    {
+      "name": "PlayGearFromZone",
+      "category": "misc",
+      "params": {
+        "target": {
+          "type": "TargetSpec",
+          "required": true,
+          "notes": "the Gear to play; target.zone picks the source zone — default 'hand' (River Ward), 'trash' plays from trash (Viktor Vektor — You Might Feel a Little Pinch)"
+        },
+        "dest": {
+          "type": "TargetSpec",
+          "notes": "the host to equip it to; defaults to a friendly Unit, chooser=controller; filter.exclude_self restricts to 'another' Unit"
+        }
+      },
+      "halts": "yes if either pick has chooser=controller and >1 candidate",
+      "notes": "Plays a Gear for free WITH equip (River Ward): picks the gear, picks a host, splices the gear from target.zone, equips it, then fires OnPlay + OnCardPlayed. If the host pick comes up empty the gear stays where it is. PlayFromZone does not equip — use this for gears."
+    },
+    {
+      "name": "CallLegend",
+      "category": "misc",
+      "params": {
+        "target": {
+          "type": "TargetSpec",
+          "notes": "defaults to a face_down friendly Legend, chooser=controller, optional"
+        }
+      },
+      "halts": "yes if chooser=controller",
+      "notes": "Flips a face-down Legend face-up for free (Chrome Reverie). No-op if a legend was already called this turn or the target is already face-up. Sets called_legend_this_turn and queues OnCall + OnFlip."
+    },
+    {
+      "name": "BindValue",
+      "category": "control",
+      "params": {
+        "value": {
+          "type": "Expr",
+          "required": true
+        },
+        "bind_to": {
+          "type": "string",
+          "required": true,
+          "notes": "alias: bind"
+        }
+      },
+      "writes_binding": "bind_to (number)",
+      "notes": "Evaluates an expression NOW and stores the number in a binding, so a later condition can compare against a value captured before the board changed (Shattered Memories counts both hands before discarding them)."
+    },
+    {
+      "name": "RestrictGigSteals",
+      "category": "modifier",
+      "params": {
+        "until": {
+          "type": "string | object",
+          "notes": "'controller_next_turn' (default) or an explicit {pid, turn}"
+        },
+        "forbid": {
+          "type": "enum",
+          "values": [
+            "above_power",
+            "below_power"
+          ],
+          "default": "above_power",
+          "notes": "'above_power': raiders may only take Gigs valued <= their power (Chrome Fang). 'below_power': only Gigs valued >= their power (Westbrook Netrunner)."
+        },
+        "attacker": {
+          "type": "CardFilter",
+          "notes": "scopes which raiders are limited, matched against the attacker's card def — so {type:'Unit'} excludes GO_SOLO'd Legends and {type:'Legend'} catches them (card-def type convention, same as trigger.card). null = every raider."
+        }
+      },
+      "notes": "Board-level: while active, a rival raider stealing from this controller's Gig row only sees Gigs passing the power test. Entries stack (a Unit-scoped and a Legend-scoped entry can coexist); re-casting the same shape refreshes its duration. Stored on b._steal_power_limits, read by combat.js runSteal, expired by primitives.js clearExpiredUntilKeywords (Chrome Fang, Westbrook Netrunner)."
+    },
+    {
+      "name": "DiscountGoSolo",
+      "category": "modifier",
+      "params": {
+        "target": {
+          "type": "TargetSpec",
+          "required": true,
+          "notes": "type='Legend', face_up (GO SOLO requires face-up + ready); pair with filter {has_keyword:'GO_SOLO'} so the prompt never offers a legend that cannot solo"
+        },
+        "amount": {
+          "type": "Expr",
+          "required": true,
+          "notes": "€$ off the GO SOLO cost"
+        },
+        "min": {
+          "type": "number",
+          "default": 1,
+          "notes": "floor for the discounted cost"
+        }
+      },
+      "notes": "Turn-scoped, per-legend GO SOLO discount (Nocturne OP55 N1: a friendly Legend solos for -2 €$, min 1). Sets legend._solo_discount, applied by events.js goSoloCost AFTER SoloCostTax with its own floor, surfaced to the client as legend.solo_cost, wiped by clearTransients at end of turn."
+    }
+  ],
+  "conditions": [
+    {
+      "name": "True",
+      "params": {},
+      "notes": "always true"
+    },
+    {
+      "name": "False",
+      "params": {},
+      "notes": "always false"
+    },
+    {
+      "name": "And",
+      "params": {
+        "args": "ConditionSpec[]"
+      }
+    },
+    {
+      "name": "Or",
+      "params": {
+        "args": "ConditionSpec[]"
+      }
+    },
+    {
+      "name": "Not",
+      "params": {
+        "arg": "ConditionSpec"
+      }
+    },
+    {
+      "name": "Compare",
+      "params": {
+        "lhs": "Expr",
+        "op": {
+          "type": "enum",
+          "values": [
+            ">",
+            ">=",
+            "<",
+            "<=",
+            "==",
+            "!="
+          ]
+        },
+        "rhs": "Expr"
+      }
+    },
+    {
+      "name": "StreetCred",
+      "params": {
+        "side": {
+          "type": "enum",
+          "values": [
+            "self",
+            "opponent"
+          ],
+          "default": "self"
+        },
+        "op": {
+          "type": "enum",
+          "values": [
+            ">",
+            ">=",
+            "<",
+            "<=",
+            "==",
+            "!="
+          ]
+        },
+        "value": "number"
+      }
+    },
+    {
+      "name": "GigAtMaxValue",
+      "params": {
+        "ref": {
+          "type": "string",
+          "notes": "binding name pointing to a gig"
+        }
+      }
+    },
+    {
+      "name": "IsMinOrMax",
+      "params": {
+        "value": {
+          "type": "Expr",
+          "required": true,
+          "notes": "the rolled value"
+        },
+        "sides": {
+          "type": "Expr",
+          "required": true,
+          "notes": "the die type (number of sides)"
+        }
+      },
+      "notes": "True when value is the die's min (1) or max (== sides). Pairs with OnGigRolled (value/sides via event_field) for Kerry's min/max draw."
+    },
+    {
+      "name": "GigValueExists",
+      "params": {
+        "side": {
+          "type": "enum",
+          "values": [
+            "self",
+            "opponent"
+          ],
+          "default": "self"
+        },
+        "value": "Expr"
+      },
+      "notes": "true if any of side's gigs equals the evaluated value"
+    },
+    {
+      "name": "HasSidedPair",
+      "params": {
+        "side": {
+          "type": "enum",
+          "values": [
+            "self",
+            "opponent"
+          ],
+          "default": "self"
+        }
+      },
+      "notes": "true if two of side's gigs share the same number of sides"
+    },
+    {
+      "name": "HasValuePair",
+      "params": {
+        "side": {
+          "type": "enum",
+          "values": [
+            "self",
+            "opponent"
+          ],
+          "default": "self"
+        }
+      },
+      "notes": "true if two of side's gigs share the same value"
+    },
+    {
+      "name": "DistinctGigValueCount",
+      "params": {
+        "side": {
+          "type": "enum",
+          "values": [
+            "self",
+            "opponent"
+          ],
+          "default": "self"
+        },
+        "op": {
+          "type": "enum",
+          "values": [
+            ">",
+            ">=",
+            "<",
+            "<=",
+            "==",
+            "!="
+          ]
+        },
+        "value": "number"
+      },
+      "notes": "compares the count of distinct gig values on a side to value (Zetatech Faceplate draw clause)"
+    },
+    {
+      "name": "HasInZone",
+      "params": {
+        "side": {
+          "type": "enum",
+          "values": [
+            "self",
+            "opponent"
+          ],
+          "default": "self"
+        },
+        "zone": {
+          "type": "Zone",
+          "required": true
+        },
+        "filter": "FilterSpec"
+      },
+      "notes": "true if any card in the named zone matches the filter"
+    },
+    {
+      "name": "HasInZoneN",
+      "params": {
+        "side": {
+          "type": "enum",
+          "values": [
+            "self",
+            "opponent"
+          ],
+          "default": "self"
+        },
+        "zone": {
+          "type": "Zone",
+          "required": true
+        },
+        "filter": "FilterSpec",
+        "n": {
+          "type": "number",
+          "default": 1
+        }
+      },
+      "notes": "true if at least n matches"
+    },
+    {
+      "name": "CanCallLegend",
+      "params": {},
+      "notes": "true if the controller has not called a legend this turn AND has a face-down legend. Gates free-call prompts (Chrome Reverie) so the engine never offers a CallLegend that would no-op."
+    },
+    {
+      "name": "SelfIsReady",
+      "params": {},
+      "notes": "the firing card is in 'ready' state"
+    },
+    {
+      "name": "SelfIsSpent",
+      "params": {},
+      "notes": "the firing card is in 'spent' state"
+    },
+    {
+      "name": "SelfDidCombat",
+      "params": {},
+      "notes": "this unit stole or fought this turn (set in combat resolution, cleared at end-of-turn cleanup). Intended for ScheduleDefeat.condition (Cyberpsychosis)."
+    },
+    {
+      "name": "SelfStoleGig",
+      "params": {},
+      "notes": "this unit stole at least one Gig this turn via the combat steal path (handleStealChoice sets _stole_gig_this_turn; cleared at end-of-turn cleanup). Steal-specific — fights do NOT set it. Delamain Cab: 'at the end of your turn, if this Unit stole a Gig this turn, ready 1 Eddie' (OnEndTurn by:controller + this condition)."
+    },
+    {
+      "name": "PlayedProgramThisTurn",
+      "params": {
+        "side": {
+          "type": "enum",
+          "values": [
+            "self",
+            "opponent"
+          ],
+          "default": "self"
+        }
+      },
+      "notes": "true if the side's player has played a Program this turn — main-phase play, quick interrupt cast, or PlayFromZone (set at play-commit in playProgram / PlayFromZone; cleared at end-of-turn cleanup). Jacked-In Voodoo Boy: conditional CANNOT_ATTACK via Not(PlayedProgramThisTurn)."
+    },
+    {
+      "name": "SelfEquipsSource",
+      "params": {},
+      "notes": "self (a gear) is equipped on the event source unit"
+    },
+    {
+      "name": "HostEquipsSelf",
+      "params": {},
+      "notes": "self has at least one equipped gear"
+    },
+    {
+      "name": "HostNamed",
+      "params": {
+        "name": {
+          "type": "string",
+          "required": true
+        }
+      },
+      "notes": "for gear: true if its equipped host has the given lead name (part before ' — ', accent/case-insensitive). Dying Night — V's Pistol: ready 2 Eddies at end of turn if its host is named 'V'."
+    },
+    {
+      "name": "BoundMatches",
+      "params": {
+        "ref": {
+          "type": "string",
+          "required": true
+        },
+        "filter": {
+          "type": "FilterSpec",
+          "required": true
+        }
+      },
+      "notes": "true if the card bound under `ref` matches `filter` (card-def match via matchCard; supports any_of/subtype_has/type/etc.). Take Control: draw if the chosen Unit is AI/Drone/Vehicle."
+    },
+    {
+      "name": "SourceIsSelf",
+      "params": {}
+    },
+    {
+      "name": "SourceIsController",
+      "params": {}
+    },
+    {
+      "name": "SourceIsOpponent",
+      "params": {}
+    },
+    {
+      "name": "BindingSet",
+      "params": {
+        "name": {
+          "type": "string",
+          "required": true
+        }
+      },
+      "notes": "true if ctx.bindings[name] is set and non-null — common pattern for 'if you did the optional thing'. A declined optional target pick writes a null binding, which reads as NOT set."
+    }
+  ],
+  "expression_ops": [
+    {
+      "op": "lit",
+      "params": {
+        "value": "number"
+      },
+      "notes": "or pass a bare number — handled directly"
+    },
+    {
+      "op": "add",
+      "params": {
+        "args": "Expr[]"
+      }
+    },
+    {
+      "op": "sub",
+      "params": {
+        "args": "Expr[]"
+      }
+    },
+    {
+      "op": "mul",
+      "params": {
+        "args": "Expr[]"
+      }
+    },
+    {
+      "op": "mod",
+      "params": {
+        "args": "Expr[]"
+      },
+      "notes": "args[0] % args[1]; 0 if the divisor is 0 (never throws). Street-cred parity: mod(street_cred, 2) == 0 (Field Operator)."
+    },
+    {
+      "op": "ref",
+      "params": {
+        "name": {
+          "type": "string",
+          "notes": "dot path: 'card' or 'card.cost'"
+        }
+      },
+      "notes": "reads from ctx.bindings; returns 0 if non-numeric"
+    },
+    {
+      "op": "binding",
+      "params": {
+        "name": {
+          "type": "string",
+          "required": true
+        }
+      },
+      "notes": "reads the RAW value of ctx.bindings[name] (string/object/etc, null if unset) — unlike 'ref' it does NOT coerce to a number. Used to compare a chosen card-type string in a type_eq filter (Misty Olszewski)."
+    },
+    {
+      "op": "gig_value",
+      "params": {
+        "ref": "string"
+      },
+      "notes": "shortcut for ref to a bound gig's value"
+    },
+    {
+      "op": "gig_sides",
+      "params": {
+        "ref": "string"
+      }
+    },
+    {
+      "op": "street_cred",
+      "params": {
+        "side": {
+          "type": "enum",
+          "values": [
+            "self",
+            "opponent"
+          ],
+          "default": "self"
+        }
+      }
+    },
+    {
+      "op": "gig_count",
+      "params": {
+        "side": {
+          "type": "enum",
+          "values": [
+            "self",
+            "opponent"
+          ],
+          "default": "self"
+        }
+      }
+    },
+    {
+      "op": "gig_values",
+      "params": {
+        "side": {
+          "type": "enum",
+          "values": [
+            "self",
+            "opponent"
+          ],
+          "default": "self"
+        }
+      },
+      "notes": "array of a side's gig values — feeds membership filters cost_in / value_not_in (Hanako, Gorilla Arms)"
+    },
+    {
+      "op": "count",
+      "params": {
+        "side": {
+          "type": "enum",
+          "values": [
+            "self",
+            "opponent"
+          ],
+          "default": "self"
+        },
+        "zone": {
+          "type": "Zone",
+          "default": "field"
+        },
+        "filter": "FilterSpec"
+      }
+    },
+    {
+      "op": "eddie_pool",
+      "params": {
+        "side": {
+          "type": "enum",
+          "values": [
+            "self",
+            "opponent"
+          ],
+          "default": "self"
+        }
+      },
+      "notes": "count of that side's READY eddies + ready legends — the pool PayEddies draws from. Gate an optional payment with Compare(eddie_pool >= n) so the prompt is never offered unaffordably."
+    },
+    {
+      "op": "gear_count",
+      "params": {
+        "ref": {
+          "type": "string",
+          "notes": "binding name; defaults to ctx.self_iid"
+        },
+        "from_source": {
+          "type": "boolean",
+          "notes": "read the EVENT SOURCE's gear instead (ctx.source_iid) — lets a triggered ability gate on 'a friendly equipped Unit or Legend' (Alt Cunningham — Mother of Daemons)"
+        }
+      }
+    },
+    {
+      "op": "legend_face_count",
+      "params": {
+        "side": {
+          "type": "enum",
+          "values": [
+            "self",
+            "opponent"
+          ],
+          "default": "self"
+        },
+        "face": {
+          "type": "enum",
+          "values": [
+            "face_up",
+            "face_down"
+          ],
+          "default": "face_up"
+        }
+      }
+    },
+    {
+      "op": "event_field",
+      "params": {
+        "field": {
+          "type": "string",
+          "notes": "supports 'key', 'key[n]', 'key[*]', 'key[*].sub'"
+        }
+      },
+      "notes": "reads from ctx.event_data — used by triggered abilities to inspect the event payload"
+    },
+    {
+      "op": "value_pair_count",
+      "params": {
+        "side": {
+          "type": "enum",
+          "values": [
+            "self",
+            "opponent"
+          ],
+          "default": "self"
+        }
+      },
+      "notes": "number of value-pairs among side's gigs (Sandayu Oda, Goro Vengeful)"
+    },
+    {
+      "op": "self_power",
+      "params": {},
+      "notes": "effective power of the firing card (base + temp + gear + statics/auras, floored at 0); 0 if it isn't on the board. Compose with Compare for 'this Unit has power N+' (Swordwise Huscle)."
+    },
+    {
+      "op": "card_cost",
+      "params": {
+        "ref": {
+          "type": "string",
+          "notes": "binding name of a card ref; reads cost from DB by card_id. Use after SelectTarget from hand."
+        }
+      },
+      "notes": "Returns the cost of a bound card ref (e.g. the card chosen to discard). If the binding is an array (e.g. from RevealTop), reads the first element (Sasha Yakovleva)."
+    },
+    {
+      "op": "self_pid",
+      "params": {},
+      "notes": "the controlling player's pid"
+    },
+    {
+      "op": "opp_pid",
+      "params": {},
+      "notes": "the opponent's pid"
+    },
+    {
+      "op": "source_power",
+      "params": {},
+      "notes": "effective power of the EVENT SOURCE (ctx.source_*), the mirror of self_power. 0 if the source is not on the board. Lets a listener compare against the power of the unit that fired the event (Rogue Amendiares — Queen of the Afterlife)."
+    }
+  ],
+  "trigger_spec": {
+    "_comment": "Shape of the `trigger` field on an Ability. Matched by eval.js matchTrigger.",
+    "event": {
+      "type": "TriggerEvent",
+      "required": true
+    },
+    "by": {
+      "type": "enum",
+      "values": [
+        "self",
+        "controller",
+        "opponent",
+        "host",
+        "any"
+      ],
+      "default": "any",
+      "notes": "self=event source is this card; controller=source belongs to my controller; opponent=source belongs to the rival; host=self is gear and source is its bearer"
+    },
+    "card": {
+      "type": "CardFilter",
+      "notes": "filters the source card (e.g. by faction, color)"
+    },
+    "rate_limit": {
+      "type": "enum",
+      "values": [
+        "first_per_turn"
+      ],
+      "notes": "currently the only rate limit"
+    },
+    "rate_limit_scope": {
+      "type": "enum",
+      "values": [
+        "iid",
+        "card_id",
+        "controller"
+      ],
+      "notes": "what the 'first' is scoped by. controller scope is keyed per card_id, so two different cards with controller-scoped limits on the same event don't suppress each other (copies of the same card still share it)"
+    }
+  },
+  "trigger_events": [
+    {
+      "name": "OnPlay",
+      "self_hook": "onPlay",
+      "data": {},
+      "notes": "fired when a card enters play (units/gears) or resolves (programs)"
+    },
+    {
+      "name": "OnCall",
+      "self_hook": "onCall",
+      "data": {},
+      "notes": "legend call mechanic"
+    },
+    {
+      "name": "OnFlip",
+      "self_hook": "onFlip",
+      "data": {},
+      "notes": "legend flip"
+    },
+    {
+      "name": "OnDefeated",
+      "self_hook": "onDefeated",
+      "data": {
+        "gear_count": "number"
+      },
+      "notes": "fired after a unit is defeated; event_data.gear_count = how much gear it had (River Ward reacts to a friendly EQUIPPED unit dying)"
+    },
+    {
+      "name": "OnSpent",
+      "self_hook": "onSpent",
+      "data": {},
+      "notes": "fired when a card becomes spent — attacking, paying a spend cost, or a Spend/SpendSelf effect. by:'host' lets equipped gear react (Zetatech Faceplate)"
+    },
+    {
+      "name": "OnCardAttacks",
+      "data": {},
+      "notes": "an attacking unit declared its attack"
+    },
+    {
+      "name": "OnBlock",
+      "data": {},
+      "notes": "a Unit was declared as a blocker (redirecting a rival attack to itself). source = the blocking unit; use by:'controller' to react to a friendly Unit blocking (Goro Takemura — Vengeful Bodyguard)"
+    },
+    {
+      "name": "OnCardPlayed",
+      "data": {},
+      "notes": "any card was played (ambient witness)"
+    },
+    {
+      "name": "OnGigValueChanged",
+      "data": {
+        "gig_iid": "number",
+        "gig_pid": "string",
+        "old_value": "number",
+        "new_value": "number"
+      },
+      "notes": "fires when a player changes the value of a gig they don't own (any direction — increase/decrease/set). Meredith Stout reacts to a Rival adjusting/swapping her friendly Gigs"
+    },
+    {
+      "name": "OnStealGigs",
+      "data": {
+        "stolen_gigs": "Gig[]"
+      },
+      "notes": "fires ONCE after a steal resolves, over the gigs that actually moved (a gig cancelled in its OnWouldStealGig window is absent). exposed via from_event: 'stolen_gigs' or event_field expr"
+    },
+    {
+      "name": "OnWouldStealGig",
+      "data": {
+        "gig": "Gig[]",
+        "value": "number",
+        "sides": "number"
+      },
+      "notes": "replacement window opened once PER CHOSEN GIG, while that gig is still in the victim's row and before any of them move. source_* is the attacking unit, so the victim listens with by:'opponent'. A listener calls PreventPendingSteal to stop that one gig. event_data.gig is a one-element array for from_event targeting; value/sides are the die's face and size (Alt Cunningham — Mother of Daemons)."
+    },
+    {
+      "name": "OnLoseFight",
+      "data": {
+        "opposing": "CardRef[]"
+      },
+      "notes": "fires for the LOSER of a unit-vs-unit fight — attacker or defender — while it is still on the field, immediately before its defeat is committed. event_data.opposing is a one-element array holding the other fighter, so target it with from_event:'opposing' rather than re-deriving it (Maelstrom Zealots). Does not fire when the loser's defeat was already prevented by a fight shield."
+    },
+    {
+      "name": "OnWouldBeDefeated",
+      "data": {},
+      "notes": "replacement window opened by _MaybeDefeat before EVERY defeat commits — fight, the Defeat action, and end-of-turn scheduled defeats. source_* is the unit about to die, still on the field. A listener calls PreventPendingDefeat to cancel it (Jackie Welles — Mama's Favorite). Fires even with no listeners; the scan is a no-op then."
+    },
+    {
+      "name": "OnWinFight",
+      "data": {
+        "margin": "int",
+        "winner_power": "int",
+        "loser_power": "int"
+      },
+      "notes": "fires for the surviving winner of a unit-vs-unit fight — attacker OR a friendly blocker that beats the attacker. event_field 'margin' = winner_power - loser_power (for 'wins by N+' gates). Consumers: Satori (by:host draw), badge steal."
+    },
+    {
+      "name": "OnEndTurn",
+      "data": {},
+      "notes": "fired at the end of the active player's turn, before scheduled cleanup. source_pid = active player; use by:'controller' so a unit fires on its own controller's turn (e.g. 'at end of your turn, return this Unit to hand')"
+    },
+    {
+      "name": "OnPlayPhaseStart",
+      "data": {},
+      "notes": "fired at the start of the active player's main phase"
+    },
+    {
+      "name": "OnGigRolled",
+      "data": {
+        "gig_iid": "string",
+        "gig_pid": "string",
+        "sides": "number",
+        "value": "number"
+      },
+      "notes": "fires when the active player rolls a Gig from their fixer area (start-of-turn), after the die is pushed to gigs. source_pid = the roller; use by:'controller'. Adjusting/stealing a gig is NOT a roll and does not fire this. Kerry Eurodyne — Axe, Attitude, Audience: optional reroll (RerollGig) + min/max draw (IsMinOrMax)"
+    }
+  ],
+  "static_kinds": [
+    {
+      "kind": "SelfKeyword",
+      "params": {
+        "keyword": {
+          "type": "string",
+          "required": true,
+          "notes": "uppercased on read; engine-recognized: GO_SOLO, ADRENALINE, BLOCKER, CANNOT_ATTACK, UNBLOCKABLE, HASTE_VS_SPENT, HASTE_VS_GIGS, ATTACK_READY_BLOCKERS, ATTACK_READY_UNITS, FIGHT_IMMUNE, CANNOT_ATTACK_GIGS"
+        },
+        "condition": "ConditionSpec"
+      },
+      "notes": "Adds the keyword to this card while condition holds."
+    },
+    {
+      "kind": "SelfPower",
+      "params": {
+        "expr": {
+          "type": "Expr",
+          "required": true
+        },
+        "when": "WhenSpec"
+      },
+      "notes": "Adds expr to this unit's power while when holds."
+    },
+    {
+      "kind": "PowerMultiplier",
+      "params": {
+        "factor": {
+          "type": "number",
+          "required": true
+        },
+        "when": "WhenSpec"
+      },
+      "notes": "Multiplies effective power. Currently unused by shipped scripts (El Sombrerón uses GrantTempPower)."
+    },
+    {
+      "kind": "Aura",
+      "params": {
+        "affects": "AffectsSpec",
+        "expr": "Expr",
+        "when": "WhenSpec",
+        "requires": "ConditionSpec"
+      },
+      "notes": "Adds expr to power of every card matching affects."
+    },
+    {
+      "kind": "AuraKeyword",
+      "params": {
+        "affects": "AffectsSpec",
+        "keyword": {
+          "type": "string",
+          "required": true
+        },
+        "condition": "ConditionSpec"
+      },
+      "notes": "Grants keyword to every card matching affects (e.g. gear granting BLOCKER to its host via affects:{is:'equipped_host'})."
+    },
+    {
+      "kind": "AlwaysWinsFight",
+      "params": {
+        "vs": {
+          "type": "CardFilter",
+          "notes": "matched against the OPPOSING fighter's card definition; omit to auto-win every fight"
+        },
+        "condition": "ConditionSpec"
+      },
+      "notes": "This unit wins any unit-vs-unit fight matching `vs` regardless of power — the other fighter is defeated, this one is not, and OnWinFight fires for this one (Johnny Silverhand — Never Stop Fighting, vs faction 'Corpo'). Read by events.js alwaysWinsFight, snapshotted in _FightInit. If BOTH fighters auto-win, the normal power compare decides. Fight shields still apply on top."
+    },
+    {
+      "kind": "SoloCostTax",
+      "params": {
+        "amount": {
+          "type": "number",
+          "required": true
+        },
+        "side": {
+          "type": "enum",
+          "values": [
+            "opponent",
+            "self"
+          ],
+          "default": "opponent",
+          "notes": "whose GO SOLO is taxed, seen from this card's controller"
+        }
+      },
+      "notes": "Raises the €$ cost of playing a Legend via GO SOLO (Riot Shield: rivals pay +2). Read by events.js goSoloCost — charged in turn.js play_legend_solo and surfaced to the client as legend.solo_cost by server/lib/rooms.js."
+    },
+    {
+      "kind": "LegendCallDiscount",
+      "params": {
+        "amount": {
+          "type": "number",
+          "required": true,
+          "notes": "€$ off this controller's legend call; the base call cost is 1, floored at 0"
+        }
+      },
+      "notes": "Lowers the €$ cost of the controller's main-phase Call (Panam Palmer — Strength Through Family: amount 1 makes it free). Read by events.js legendCallCost — charged in turn.js call_legend. Only friendly in-play sources count; the defensive call is unaffected."
+    }
+  ],
+  "when_spec": {
+    "_comment": "Modifier gating used on Static expressions (events.js _matchWhen).",
+    "during_fight": {
+      "type": "boolean"
+    },
+    "role": {
+      "type": "enum",
+      "values": [
+        "attacker",
+        "defender"
+      ]
+    },
+    "vs_type": {
+      "type": "CardType",
+      "notes": "only set during a unit-vs-unit fight: the card type of the opposing fighter. Meredith Stout: +2 power while fighting a Legend"
+    },
+    "active_player": {
+      "type": "enum",
+      "values": [
+        "self",
+        "opponent"
+      ]
+    }
+  },
+  "affects_spec": {
+    "_comment": "Used by Aura/AuraKeyword to pick the cards an aura modifies.",
+    "side": {
+      "type": "enum",
+      "values": [
+        "friendly",
+        "opponent"
+      ]
+    },
+    "filter": {
+      "type": "object",
+      "shape": {
+        "type": "CardType",
+        "faction": "string",
+        "color": "string"
+      }
+    },
+    "is": {
+      "type": "enum",
+      "values": [
+        "equipped_host"
+      ],
+      "notes": "special: matches the unit/legend wearing this gear"
+    },
+    "exclude_self": {
+      "type": "boolean",
+      "notes": "drop the source card itself from the aura ('Other friendly Units' — Saul Bright)"
+    }
+  },
+  "target_spec": {
+    "_comment": "TargetSpec — the universal way to point at one or more game entities. Resolved by select.js resolveTarget + selectTarget. Multiple resolution paths; first matching wins.",
+    "resolution_modes": {
+      "from_self": {
+        "type": "boolean",
+        "notes": "bind the firing card itself"
+      },
+      "from_binding": {
+        "type": "string",
+        "notes": "re-use a previously written binding by name"
+      },
+      "from_host": {
+        "type": "boolean",
+        "notes": "for gear: the unit/legend it's equipped to"
+      },
+      "from_trigger_source": {
+        "type": "boolean",
+        "notes": "the card that fired the current event (ctx.source_*)"
+      },
+      "from_event": {
+        "type": "string",
+        "notes": "pull a field from event_data (e.g. 'stolen_gigs')"
+      }
+    },
+    "selection_params": {
+      "type": {
+        "type": "enum",
+        "values": [
+          "Unit",
+          "Gear",
+          "Legend",
+          "Gig",
+          "CardRef"
+        ],
+        "notes": "shapes default zone & choice kind"
+      },
+      "side": {
+        "type": "enum",
+        "values": [
+          "friendly",
+          "self",
+          "opponent",
+          "both"
+        ],
+        "default": "self",
+        "notes": "engine treats anything other than 'opponent' as own; 'both' iterates both players"
+      },
+      "zone": {
+        "type": "Zone",
+        "notes": "defaults from type: Gig→gigs, Unit→field, Legend→legends, Gear→equipped. Special virtual zone 'in_play' = field units + face-up legends (gear equip dests, e.g. River Ward)"
+      },
+      "face": {
+        "type": "enum",
+        "values": [
+          "face_up",
+          "face_down"
+        ],
+        "notes": "Legend only"
+      },
+      "filter": "FilterSpec",
+      "equipped_to": {
+        "type": "object",
+        "shape": {
+          "from_self": "boolean"
+        },
+        "notes": "for gear: only show pieces equipped on a specific host"
+      },
+      "chooser": {
+        "type": "enum",
+        "values": [
+          "controller",
+          "opponent",
+          "auto"
+        ],
+        "default": "auto"
+      },
+      "quantifier": {
+        "type": "enum",
+        "values": [
+          "one",
+          "all",
+          "upto_n"
+        ],
+        "default": "one"
+      },
+      "n": {
+        "type": "Expr",
+        "notes": "required when quantifier='upto_n'"
+      },
+      "auto": {
+        "type": "enum",
+        "values": [
+          "first",
+          "cheapest",
+          "highest_value",
+          "lowest_value",
+          "highest_power",
+          "lowest_power"
+        ],
+        "default": "first",
+        "notes": "tie-breaker when chooser=auto"
+      },
+      "optional": {
+        "type": "boolean",
+        "notes": "if pool is empty, skip silently instead of failing"
+      },
+      "prompt": {
+        "type": "string"
+      }
+    },
+    "binding": {
+      "bind": {
+        "type": "string",
+        "notes": "if set, the resolved value is stored in ctx.bindings[bind]"
+      }
+    },
+    "notes": "Auto-pick fires even when chooser=controller if the pool has exactly one element — logged to b._auto_picks."
+  },
+  "filter_spec": {
+    "_comment": "Filter applied to candidate cards inside a TargetSpec or condition. Implemented by primitives.js matchFilter.",
+    "exclude_self": {
+      "type": "boolean",
+      "notes": "skips the firing card itself (Adam Smasher)"
+    },
+    "exclude_binding": {
+      "type": "string",
+      "notes": "skips the card currently bound under this name (Peace Offering: dst gig ≠ src gig)"
+    },
+    "opposite_side_of": {
+      "type": "string",
+      "notes": "only refs whose _pid differs from the ref bound under this name — \"another player's Gig\" (Padre — Man of the Cross)"
+    },
+    "in_binding": {
+      "type": "string",
+      "notes": "only cards in the array bound under this name (by iid) — pairs with Mill.bind for 'from among them' picks (WNTC-027)"
+    },
+    "color": {
+      "type": "string",
+      "notes": "case-insensitive: Red/Blue/Green/Yellow"
+    },
+    "type": {
+      "type": "CardType"
+    },
+    "type_in": {
+      "type": "CardType[]"
+    },
+    "type_not": {
+      "type": "CardType",
+      "notes": "card type ≠ this. Currently unused by shipped scripts"
+    },
+    "type_eq": {
+      "type": "CardType | Expr",
+      "notes": "card type === this; Expr is evaluated (use {op:'binding'} to match a player-chosen type — Misty Olszewski)"
+    },
+    "cost_lte": {
+      "type": "number | Expr",
+      "notes": "Expr is evaluated — supports card_cost op (WNTC-093)"
+    },
+    "cost_eq": {
+      "type": "number | Expr"
+    },
+    "cost_in": {
+      "type": "number[] | Expr",
+      "notes": "card cost ∈ the array; Expr may resolve to an array (e.g. gig_values). Hanako: cost equal to any friendly Gig value"
+    },
+    "power_lte": {
+      "type": "number | Expr",
+      "notes": "EFFECTIVE power (statics/gear/temp) for refs on the board; printed power for hand/deck/trash refs; Expr evaluated (Over the Edge: power ≤ a friendly d20's value)"
+    },
+    "power_gte": {
+      "type": "number",
+      "notes": "effective power on board, printed off board"
+    },
+    "power_eq": {
+      "type": "number | Expr",
+      "notes": "effective power on board, printed off board; Expr evaluated (Wraith Marauders: power equal to a stolen Gig's value)"
+    },
+    "faction": {
+      "type": "string",
+      "notes": "matches if card subtype contains this token"
+    },
+    "subtype_has": {
+      "type": "string",
+      "notes": "matches if subtype list contains this token (e.g. 'Braindance')"
+    },
+    "state": {
+      "type": "enum",
+      "values": [
+        "ready",
+        "spent"
+      ]
+    },
+    "has_equipped_gear": {
+      "type": "boolean"
+    },
+    "gear_count": {
+      "type": "number"
+    },
+    "value": {
+      "type": "number | number[] | Expr",
+      "notes": "for Gig: matches the rolled face. Array means any-of; expr is evaluated; expr may resolve to a scalar OR array"
+    },
+    "value_not_in": {
+      "type": "number[] | Expr",
+      "notes": "for Gig: value ∉ the array; Expr may resolve to an array (e.g. gig_values). Gorilla Arms: value not shared by a friendly Gig"
+    },
+    "value_gte": {
+      "type": "number",
+      "notes": "for Gig: value ≥ N (Kerry, Carnage)"
+    },
+    "value_lte": {
+      "type": "number",
+      "notes": "for Gig: value ≤ N"
+    },
+    "value_parity": {
+      "type": "enum",
+      "values": [
+        "even",
+        "odd"
+      ],
+      "notes": "for Gig: value is even / odd (WNTC-066)"
+    },
+    "value_eq_sides": {
+      "type": "boolean",
+      "notes": "for Gig: at max value (value === sides)"
+    },
+    "sides": {
+      "type": "number | number[] | Expr",
+      "notes": "for Gig: matches die size (Gorilla Arms)"
+    },
+    "power_lt_friendly_max": {
+      "type": "boolean",
+      "notes": "for Unit: effective power < the highest effective power among friendly field units (Carnage)"
+    },
+    "power_is_lowest": {
+      "type": "boolean",
+      "notes": "for Unit: effective power is the minimum among the field units on that ref's OWN side — side-relative, so it works on a rival pool. Leaves every tied-lowest unit in the pool so the chooser picks among them (Les Élémens)"
+    },
+    "any_of": {
+      "type": "FilterSpec[]",
+      "notes": "logical OR of sub-filters (evaluated by matchCard)"
+    },
+    "has_keyword": {
+      "type": "string",
+      "notes": "matches if the card's SCRIPT declares a SelfKeyword with this name (case-insensitive). The cards.json `keywords` column is null for every card, so this reads the script, not the data (Arasaka Emergency Radioport: '... or has {Go Solo}')."
+    }
+  },
+  "card_filter_spec": {
+    "_comment": "Filter applied to event source cards in TriggerSpec.card. Subset of FilterSpec — operates on the card definition (db), not a board ref. Implemented by eval.js _matchCardFilter.",
+    "color": {
+      "type": "string"
+    },
+    "type": {
+      "type": "CardType"
+    },
+    "type_in": {
+      "type": "CardType[]"
+    },
+    "faction": {
+      "type": "string"
+    },
+    "subtype_has": {
+      "type": "string"
+    },
+    "cost_lte": {
+      "type": "number | Expr"
+    },
+    "cost_eq": {
+      "type": "number"
+    },
+    "any_of": {
+      "type": "CardFilter[]",
+      "notes": "logical OR of sub-filters"
+    }
+  },
+  "choice_kinds": [
+    {
+      "kind": "choose_gig",
+      "zone": "gigs",
+      "response": "iid",
+      "ui": "modal"
+    },
+    {
+      "kind": "choose_unit",
+      "zone": "field",
+      "response": "iid",
+      "ui": "click"
+    },
+    {
+      "kind": "choose_legend",
+      "zone": "legends",
+      "response": "iid",
+      "ui": "click"
+    },
+    {
+      "kind": "choose_gear",
+      "zone": "equipped",
+      "response": "iid",
+      "ui": "click"
+    },
+    {
+      "kind": "choose_card_in_hand",
+      "zone": "hand",
+      "response": "iid",
+      "ui": "click"
+    },
+    {
+      "kind": "choose_card_in_trash",
+      "zone": "trash",
+      "response": "iid",
+      "ui": "click"
+    },
+    {
+      "kind": "choose_card_in_deck",
+      "zone": "deck",
+      "response": "iid",
+      "ui": "click"
+    },
+    {
+      "kind": "choose_card_in_hand_or_trash",
+      "zone": "hand_or_trash",
+      "response": "iid",
+      "ui": "click",
+      "notes": "Two-zone pick: Programs in hand or trash (Lizzy Wizzy). Client matches via isChoosable expansion."
+    },
+    {
+      "kind": "choose_in_play",
+      "zone": "in_play",
+      "response": "iid",
+      "ui": "click"
+    },
+    {
+      "kind": "choose_amount",
+      "zone": null,
+      "response": "amount",
+      "ui": "buttons"
+    },
+    {
+      "kind": "choose_card_type",
+      "zone": null,
+      "response": "card_type",
+      "ui": "buttons",
+      "notes": "Pick a card type (Unit/Gear/Program); writes the chosen type string to a binding (Misty Olszewski)."
+    },
+    {
+      "kind": "acknowledge_reveal",
+      "zone": null,
+      "response": "acknowledge",
+      "ui": "modal",
+      "notes": "Shows the revealed card(s) with an OK button; no pick (Misty Olszewski)."
+    },
+    {
+      "kind": "confirm_optional",
+      "zone": null,
+      "response": "accept",
+      "ui": "confirm"
+    },
+    {
+      "kind": "choose_from_top_n",
+      "zone": null,
+      "response": "selected_iids",
+      "ui": "modal"
+    },
+    {
+      "kind": "choose_units",
+      "zone": "field",
+      "response": "selected_iids",
+      "ui": "click"
+    }
+  ],
+  "enums": {
+    "Zone": [
+      "hand",
+      "trash",
+      "deck",
+      "field",
+      "legends",
+      "equipped",
+      "gigs",
+      "removed",
+      "hand_or_trash"
+    ],
+    "CardType": [
+      "Unit",
+      "Gear",
+      "Legend",
+      "Program",
+      "Gig",
+      "CardRef"
+    ],
+    "Color": [
+      "Red",
+      "Blue",
+      "Green",
+      "Yellow"
+    ],
+    "Side": [
+      "self",
+      "friendly",
+      "opponent",
+      "both"
+    ],
+    "Side_short": [
+      "self",
+      "opponent"
+    ],
+    "ChooserSide": [
+      "controller",
+      "opponent",
+      "auto"
+    ],
+    "Quantifier": [
+      "one",
+      "all",
+      "upto_n"
+    ],
+    "AutoHint": [
+      "first",
+      "cheapest",
+      "highest_value",
+      "lowest_value",
+      "highest_power",
+      "lowest_power"
+    ],
+    "CompareOp": [
+      ">",
+      ">=",
+      "<",
+      "<=",
+      "==",
+      "!="
+    ],
+    "EngineKeyword": [
+      "GO_SOLO",
+      "ADRENALINE",
+      "BLOCKER",
+      "CANNOT_ATTACK",
+      "UNBLOCKABLE",
+      "HASTE_VS_SPENT",
+      "HASTE_VS_GIGS",
+      "ATTACK_READY_BLOCKERS",
+      "ATTACK_READY_UNITS",
+      "FIGHT_IMMUNE",
+      "CANNOT_ATTACK_GIGS"
+    ]
+  },
+  "categories": {
+    "control": [
+      "Optional",
+      "ChooseAmount",
+      "ChooseCardType",
+      "If",
+      "AddBadge",
+      "BindValue"
+    ],
+    "card_flow": [
+      "Draw",
+      "Discard",
+      "Mill",
+      "SellTopCard",
+      "RecoverFromTrash",
+      "SelectTarget",
+      "SearchTopN",
+      "RevealTop",
+      "AckReveal",
+      "TakeFromBound",
+      "ScryTrash",
+      "RivalDiscards"
+    ],
+    "gig_mutation": [
+      "IncreaseGig",
+      "DecreaseGig",
+      "AdjustGig",
+      "SetGigValue",
+      "TransferGig",
+      "SwapGig",
+      "RerollGig"
+    ],
+    "field_mutation": [
+      "Defeat",
+      "DefeatGear",
+      "ReturnToHand",
+      "BottomDeckFromField",
+      "RemoveFromGame"
+    ],
+    "state": [
+      "Spend",
+      "Ready",
+      "SpendSelf",
+      "ReadyEddie",
+      "PayEddies"
+    ],
+    "modifier": [
+      "GrantTempPower",
+      "GrantTempKeyword",
+      "ModifyStealCount",
+      "DiscountNextPlay",
+      "PreventFightDefeat",
+      "PreventPendingDefeat",
+      "PreventPendingSteal",
+      "RestrictGigSteals",
+      "DiscountGoSolo"
+    ],
+    "equipment": [
+      "Equip"
+    ],
+    "scheduling": [
+      "ScheduleDefeat"
+    ],
+    "misc": [
+      "MarkPeeked",
+      "CompelAttack",
+      "PlayFromZone",
+      "PlayGearFromZone",
+      "CallLegend"
+    ]
+  },
+  "context_lifecycle": {
+    "_comment": "Variables available on ctx and how they flow.",
+    "self_pid": "the player controlling the firing card",
+    "self_iid": "the firing card's instance id",
+    "self_card_id": "the firing card's card_id",
+    "source_pid": "the player whose action caused the event",
+    "source_iid": "the iid of the event source card",
+    "source_card_id": "the card_id of the event source card",
+    "event": "event name (e.g. 'OnCardAttacks')",
+    "event_data": "event payload object — read via from_event or event_field",
+    "bindings": "key→value store; written by target.bind, ChooseAmount.bind_to, RivalDiscards.bind, trigger context; read via from_binding, ref expr, BindingSet condition",
+    "active_player": "set by callers; consulted by when.active_player",
+    "during_fight": "set during fight resolution; consulted by when.during_fight",
+    "role": "'attacker' or 'defender' during a fight",
+    "_post_defeats": "queue of defeats that need to fire OnDefeated after the chain settles",
+    "_post_gig_changed": "queue of rival-caused gig value changes to fire OnGigValueChanged",
+    "_post_spends": "queue of spends that need to fire OnSpent after the chain settles"
+  }
+}

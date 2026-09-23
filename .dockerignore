@@ -1,0 +1,24 @@
+# Ignore file for the bot launcher image. The build context is the monorepo
+# root (see Dockerfile), so this is an allowlist: only engine/ and bsdk/ go up.
+*
+!engine
+!bsdk
+
+**/node_modules
+**/*.log
+.git
+
+# engine: the package is index.js + lib/ + data/
+engine/runtime
+engine/decks
+engine/*.md
+engine/*.png
+
+# bsdk: docs, deploy config and local helpers stay out of the image
+bsdk/ref
+bsdk/bat
+bsdk/*.md
+bsdk/*.png
+bsdk/fly*.toml
+bsdk/Dockerfile
+bsdk/.dockerignore

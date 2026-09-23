@@ -1,0 +1,27 @@
+{
+  
+    "punkbot-pro-light": {
+    "script": "server-ai-mybot-v3.js",
+    "description": "Sligtly more less not very smart Bot",
+    "owner": "ElGuapoDK"
+  },
+
+  "punkbot-simple-plus": {
+    "script": "server-ai-mybot-v2.js",
+    "description": "Sligtly less not very smart Bot",
+    "owner": "ElGuapoDK"
+  },
+
+  "punkbot-simple": {
+    "script": "server-ai-mybot.js",
+    "description": "Not very smart Bot",
+    "owner": "ElGuapoDK"
+  },
+
+  "punkbot-minimum": {
+    "script": "server-ai-mybot-min.js",
+    "description": "Pass everything",
+    "owner": "ElGuapoDK"
+  }
+
+}
